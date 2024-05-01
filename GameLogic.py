@@ -299,7 +299,7 @@ def point_check(hand: list) -> int:
 
     # Getting points for pairs
     pairs = [order_values.count(num) for num in order_values_set]
-    total_points += sum([math.factorial(num) for num in pairs if num > 1])
+    total_points += sum([num*(num-1) for num in pairs if num > 1])
 
     print(f"total_points after pairs: {total_points}")
     
