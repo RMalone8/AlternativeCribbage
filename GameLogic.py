@@ -301,7 +301,7 @@ def point_check(hand: list) -> int:
     pairs = [order_values.count(num) for num in order_values_set]
     total_points += sum([num*(num-1) for num in pairs if num > 1])
 
-    print(f"total_points after pairs: {total_points}")
+    print(f"Points after pairs: {total_points}")
     
     # Getting points for runs
     ordered_differences = np.array([order_values_set[i+1] - order_values_set[i] for i in range(len(order_values_set)) if i < len(order_values_set) - 1])
@@ -309,6 +309,18 @@ def point_check(hand: list) -> int:
     counter = max([sum(run==1) for run in runs]) + 1
     total_points += counter*run_multiplier if counter > 2 else 0
 
+    print(f"Points after runs: {total_points}")
+
+    # Getting points for 15s
+    s = list(values)
+    powerset = chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
+    total_points += sum([2 for group in powerset if sum(group) == 15])
+
+    print(f"Points after fifteens: {total_points}")
+
+    # Getting points for a flush
+        # I honestly don't remember how much this is worth
+
     return total_points
     
-print(point_check(player1))
+point_check(player1)
