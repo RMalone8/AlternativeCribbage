@@ -341,6 +341,64 @@ def point_check(hand: list, cut_card: list = [{"title": "Blank", "suit": "Blank"
 
     return total_points
 
+def point_check_pegging(pile: list):
+    total_points = 0
+    run_multiplier = 1
+
+    print(f"The pile so far is:")
+    for card in pile:
+        print(card['suit'] + " " + card['title'])
+
+    # Card face value
+    values = [card['value'] for card in pile]
+    values.sort()
+
+    # Card order value
+    order_values = [card['order_value'] for card in pile]
+    order_values.sort()
+    order_values_set = list(sorted(set(order_values)))
+
+    # Getting points for pairs
+    pairs = [order_values.count(num) for num in order_values_set]
+    total_points += sum([num*(num-1) for num in pairs])
+
+    print(f"Points after pairs: {total_points}")
+
+    # Getting points for runs - rigged in a way to work for all 5-card hands: only keeps track on the highest run in a hand
+    ordered_differences = np.array([order_values_set[i+1] - order_values_set[i] for i in range(len(order_values_set)) if i < len(order_values_set) - 1])
+    runs = np.split(ordered_differences, np.where(ordered_differences > 1)[0])
+    counter = max([sum(run==1) for run in runs]) + 1
+
+    # Checking for double runs, triple runs, double-double runs, etc
+    just_added = False
+    for i in range(len(ordered_differences)):
+        if ordered_differences[i] == 1:
+            if order_values.count(order_values_set[i]) > 1 and not just_added:
+                run_multiplier *= order_values.count(order_values_set[i])
+            elif just_added:
+                just_added = False
+            if order_values.count(order_values_set[i+1]) > 1:
+                run_multiplier *= order_values.count(order_values_set[i+1])
+                just_added = True
+    total_points += counter*run_multiplier if counter > 2 else 0
+
+    print(f"Points after runs: {total_points}")
+
+    # Getting points for reaching 15 or 31
+    if sum([card["value"] for card in pile]) == 15 or sum([card["value"] for card in pile]) == 31:
+        total_points += 2
+
+    # Getting points for a flush
+    if len(set([card["suit"] for card in pile])) == 1 and len(pile) == 5:
+        total_points += 5
+    elif len(set([card["suit"] for card in pile])) == 1 and len(pile == 4):
+        total_points += 4
+
+    print(f"Points after flushes: {total_points}")
+
+    return total_points
+
+
 def pegging_prompt(hand: list):
     # This can be the console-based pegging to get the scoring working
     print("Your hand, sire: ")
@@ -381,13 +439,14 @@ if __name__ == "__main__":
             answer = pegging_prompt(player2)
 
         pile.append(answer)
+        if len(pile) > 5:
+            pile = pile[-5:]
 
-
-        # For these, crib is true otherwise a 4 point flush is immediately awarded
-        if player1_turn:
-            player1_points += point_check(pile, crib= True)
-        else:
-            player2_points += point_check(pile, crib= True)
+        if len(pile) > 1:
+            if player1_turn:
+                player1_points += point_check_pegging(pile)
+            else:
+                player2_points += point_check_pegging(pile)
 
         player1_turn = not player1_turn
 
