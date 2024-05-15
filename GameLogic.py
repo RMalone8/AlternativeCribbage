@@ -272,17 +272,14 @@ deck = [ # Spades
          "order_value": 13},
          ]
 
+
 def generateCards(num_cards: int) -> list:
     hand = []
     for i in range(num_cards):
         hand.append(deck.pop(random.randint(0,len(deck)-1)))
     return hand
 
-player1 = generateCards(4)
-#player2 = generateCards()
-cut_card = generateCards(1)
-
-def point_check(hand: list, cut_card: dict, crib: bool = False) -> int:
+def point_check(hand: list, cut_card: list = [{"title": "Blank", "suit": "Blank", "color": "White", "value": 100, "order_value": 100}], crib: bool = False) -> int:
     total_points = 0
     run_multiplier = 1
 
@@ -311,6 +308,18 @@ def point_check(hand: list, cut_card: dict, crib: bool = False) -> int:
     ordered_differences = np.array([order_values_set[i+1] - order_values_set[i] for i in range(len(order_values_set)) if i < len(order_values_set) - 1])
     runs = np.split(ordered_differences, np.where(ordered_differences > 1)[0])
     counter = max([sum(run==1) for run in runs]) + 1
+
+    # Checking for double runs, triple runs, double-double runs, etc
+    just_added = False
+    for i in range(len(ordered_differences)):
+        if ordered_differences[i] == 1:
+            if order_values.count(order_values_set[i]) > 1 and not just_added:
+                run_multiplier *= order_values.count(order_values_set[i])
+            elif just_added:
+                just_added = False
+            if order_values.count(order_values_set[i+1]) > 1:
+                run_multiplier *= order_values.count(order_values_set[i+1])
+                just_added = True
     total_points += counter*run_multiplier if counter > 2 else 0
 
     print(f"Points after runs: {total_points}")
@@ -331,6 +340,56 @@ def point_check(hand: list, cut_card: dict, crib: bool = False) -> int:
     print(f"Points after flushes: {total_points}")
 
     return total_points
-    
 
-point_check(hand= player1, cut_card= cut_card)
+def pegging_prompt(hand: list):
+    # This can be the console-based pegging to get the scoring working
+    print("Your hand, sire: ")
+    for card in hand:
+        print(card['suit'] + " " + card['title'])
+    played_card = ''
+    while played_card == '':
+        played_card_text = input("State the card that you wish to play: ")
+        for card in hand:
+            if card["suit"][0] == played_card_text[-1] and card["order_value"] == int(played_card_text[:-1]):
+                played_card = card
+                hand.remove(card)
+        if played_card == '':
+            print("You super don't have that card, try again.")
+
+    return played_card
+
+
+answer = ''
+if __name__ == "__main__":
+    player1 = generateCards(4)
+    player1_points = 0
+    player2 = generateCards(4)
+    player2_points = 0
+    #cut_card = generateCards(1)
+    pile = []
+
+    print("Hello and Welcome! To play a card, state it in the format of the")
+    print("number of the card's order followed by the first letter of its suit.")
+
+    player1_turn = True
+    while True:
+        if player1_turn:
+            print("PLAYER 1's TURN")
+            answer = pegging_prompt(player1)
+        else:
+            print("PLAYER 2's TURN")
+            answer = pegging_prompt(player2)
+
+        pile.append(answer)
+
+
+        # For these, crib is true otherwise a 4 point flush is immediately awarded
+        if player1_turn:
+            player1_points += point_check(pile, crib= True)
+        else:
+            player2_points += point_check(pile, crib= True)
+
+        player1_turn = not player1_turn
+
+        if answer == "done":
+            break
