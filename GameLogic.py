@@ -1,7 +1,7 @@
 import random
 import math
 import numpy as np
-from itertools import chain, combinations
+from point_counting import point_check, point_check_pegging
 
 deck = [ # Spades
         {"title": "A",
@@ -279,126 +279,6 @@ def generateCards(num_cards: int) -> list:
         hand.append(deck.pop(random.randint(0,len(deck)-1)))
     return hand
 
-def point_check(hand: list, cut_card: list = [{"title": "Blank", "suit": "Blank", "color": "White", "value": 100, "order_value": 100}], crib: bool = False) -> int:
-    total_points = 0
-    run_multiplier = 1
-
-    hand_w_cut = hand + cut_card
-
-    print(f"The following hand is:")
-    for card in hand_w_cut:
-        print(card['suit'] + " " + card['title'])
-
-    # Card face value
-    values = [card['value'] for card in hand_w_cut]
-    values.sort()
-
-    # Card order value
-    order_values = [card['order_value'] for card in hand_w_cut]
-    order_values.sort()
-    order_values_set = list(sorted(set(order_values)))
-
-    # Getting points for pairs
-    pairs = [order_values.count(num) for num in order_values_set]
-    total_points += sum([num*(num-1) for num in pairs])
-
-    print(f"Points after pairs: {total_points}")
-
-    # Getting points for runs - rigged in a way to work for all 5-card hands: only keeps track on the highest run in a hand
-    ordered_differences = np.array([order_values_set[i+1] - order_values_set[i] for i in range(len(order_values_set)) if i < len(order_values_set) - 1])
-    runs = np.split(ordered_differences, np.where(ordered_differences > 1)[0])
-    counter = max([sum(run==1) for run in runs]) + 1
-
-    # Checking for double runs, triple runs, double-double runs, etc
-    just_added = False
-    for i in range(len(ordered_differences)):
-        if ordered_differences[i] == 1:
-            if order_values.count(order_values_set[i]) > 1 and not just_added:
-                run_multiplier *= order_values.count(order_values_set[i])
-            elif just_added:
-                just_added = False
-            if order_values.count(order_values_set[i+1]) > 1:
-                run_multiplier *= order_values.count(order_values_set[i+1])
-                just_added = True
-    total_points += counter*run_multiplier if counter > 2 else 0
-
-    print(f"Points after runs: {total_points}")
-
-    # Getting points for 15s
-    s = list(values)
-    powerset = chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
-    total_points += sum([2 for group in powerset if sum(group) == 15])
-
-    print(f"Points after fifteens: {total_points}")
-
-    # Getting points for a flush
-    if len(set([card["suit"] for card in hand])) == 1 and hand[0]["suit"] == cut_card[0]["suit"]:
-        total_points += 5
-    elif len(set([card["suit"] for card in hand])) == 1 and not crib:
-        total_points += 4
-
-    print(f"Points after flushes: {total_points}")
-
-    return total_points
-
-def point_check_pegging(pile: list):
-    total_points = 0
-    run_multiplier = 1
-
-    print(f"The pile so far is:")
-    for card in pile:
-        print(card['suit'] + " " + card['title'])
-
-    # Card face value
-    values = [card['value'] for card in pile]
-    values.sort()
-
-    # Card order value
-    order_values = [card['order_value'] for card in pile]
-    order_values.sort()
-    order_values_set = list(sorted(set(order_values)))
-
-    # Getting points for pairs
-    pairs = [order_values.count(num) for num in order_values_set]
-    total_points += sum([num*(num-1) for num in pairs])
-
-    print(f"Points after pairs: {total_points}")
-
-    # Getting points for runs - rigged in a way to work for all 5-card hands: only keeps track on the highest run in a hand
-    ordered_differences = np.array([order_values_set[i+1] - order_values_set[i] for i in range(len(order_values_set)) if i < len(order_values_set) - 1])
-    runs = np.split(ordered_differences, np.where(ordered_differences > 1)[0])
-    counter = max([sum(run==1) for run in runs]) + 1
-
-    # Checking for double runs, triple runs, double-double runs, etc
-    just_added = False
-    for i in range(len(ordered_differences)):
-        if ordered_differences[i] == 1:
-            if order_values.count(order_values_set[i]) > 1 and not just_added:
-                run_multiplier *= order_values.count(order_values_set[i])
-            elif just_added:
-                just_added = False
-            if order_values.count(order_values_set[i+1]) > 1:
-                run_multiplier *= order_values.count(order_values_set[i+1])
-                just_added = True
-    total_points += counter*run_multiplier if counter > 2 else 0
-
-    print(f"Points after runs: {total_points}")
-
-    # Getting points for reaching 15 or 31
-    if sum([card["value"] for card in pile]) == 15 or sum([card["value"] for card in pile]) == 31:
-        total_points += 2
-
-    # Getting points for a flush
-    if len(set([card["suit"] for card in pile])) == 1 and len(pile) == 5:
-        total_points += 5
-    elif len(set([card["suit"] for card in pile])) == 1 and len(pile == 4):
-        total_points += 4
-
-    print(f"Points after flushes: {total_points}")
-
-    return total_points
-
-
 def pegging_prompt(hand: list):
     # This can be the console-based pegging to get the scoring working
     print("Your hand, sire: ")
@@ -407,6 +287,9 @@ def pegging_prompt(hand: list):
     played_card = ''
     while played_card == '':
         played_card_text = input("State the card that you wish to play: ")
+        if played_card_text == 'go':
+            played_card = 'go'
+            break
         for card in hand:
             if card["suit"][0] == played_card_text[-1] and card["order_value"] == int(played_card_text[:-1]):
                 played_card = card
@@ -416,39 +299,95 @@ def pegging_prompt(hand: list):
 
     return played_card
 
+def check_for_playable_cards(hand: list, running_sum: int):
+    # Looks to see if the player can possibly go again and forces them to play it.
+    answer = ''
+    for card in hand:
+        if card["value"] + running_sum <= 31:
+            print("Bruh you literally have to play a card.")
+            while True:
+                answer = pegging_prompt(hand)
+                if type(answer) != str:
+                    if answer["value"] + running_sum <= 31:
+                        return answer
+                    else:
+                        hand.append(answer)
+                        print("Bruh that card simply does not work.")
+                else:
+                    print("Please enter the correct card, this is ridiculous.")
+                           
+    return 'go'
+
 
 answer = ''
 if __name__ == "__main__":
-    player1 = generateCards(4)
-    player1_points = 0
-    player2 = generateCards(4)
-    player2_points = 0
+    turn = 0
+    player_hands = [generateCards(4), generateCards(4)]
+    player_points = [0, 0]
     #cut_card = generateCards(1)
     pile = []
+    previous_run_points = 0
+    new_points = 0
+    running_sum = 0
 
     print("Hello and Welcome! To play a card, state it in the format of the")
     print("number of the card's order followed by the first letter of its suit.")
 
-    player1_turn = True
-    while True:
-        if player1_turn:
-            print("PLAYER 1's TURN")
-            answer = pegging_prompt(player1)
-        else:
-            print("PLAYER 2's TURN")
-            answer = pegging_prompt(player2)
+    while len(player_hands[0]) != 0 or len(player_hands[1]) != 0:
+        # Logic to prompt for playing a card, checks to see if the card played can even be played.
+        # Will also reward the player that played the last card the points and the other starts the pile
+        while True:
+            print(f"PLAYER {turn%2 + 1}'s TURN {turn%2 + 1} {turn%2 + 1} {turn%2 + 1} {turn%2 + 1}\n")
+            answer = pegging_prompt(player_hands[turn%2])
+            if type(answer) == str:
+                answer = check_for_playable_cards(player_hands[turn%2], running_sum)
+            # Giving the other player a chance to play more cards...
+                
+            if answer == 'go':
+                turn += 1
+                print(f"PLAYER {turn%2 + 1}'s ADDITIONAL PLAYS {turn%2 + 1} {turn%2 + 1} {turn%2 + 1} {turn%2 + 1}\n")
+                answer = pegging_prompt(player_hands[turn%2])
+                if type(answer) == str:
+                    answer = check_for_playable_cards(player_hands[turn%2], running_sum)
+                if type(answer) != str:  
+                    while answer["value"] + running_sum > 31:
+                        print("No sir, try again")
+                        player_hands[turn%2].append(answer)
+                        answer = pegging_prompt(player_hands[turn%2])
+                        if type(answer) == str:
+                            answer = check_for_playable_cards(player_hands[turn%2], running_sum)
+                            if answer == 'go':
+                                break
+        
+            # Did they BOTH say go? If so, let's reset
+            if answer == 'go':
+                player_points[turn%2] += 1
+                pile.clear()
+                previous_run_points = 0
+                new_points = 0
+                running_sum = 0
+                turn += 1
 
-        pile.append(answer)
-        if len(pile) > 5:
-            pile = pile[-5:]
-
+            # Do not execute if we are resetting
+            if type(answer) != str:
+                if running_sum + answer["value"] < 32:
+                    running_sum += answer["value"]
+                    pile.append(answer)
+                    if len(pile) > 5:
+                        pile = pile[-5:]
+                    break
+                else:
+                    print("Try a different card, or type 'go' to concede.")
+                    # Then give them their card back
+                    player_hands[turn%2].append(answer)
+                
         if len(pile) > 1:
-            if player1_turn:
-                player1_points += point_check_pegging(pile)
-            else:
-                player2_points += point_check_pegging(pile)
+            new_points, previous_run_points = point_check_pegging(pile, previous_run_points)
+            player_points[turn%2] += new_points
 
-        player1_turn = not player1_turn
+        print(f"PILE SUM IS THUS: {running_sum}\n" )
+        print(f"Player 1 has {player_points[0]} points.")
+        print(f"Player 2 has {player_points[1]} points.")
+        turn += 1
 
-        if answer == "done":
-            break
+    print(f"Pegging Over!! Player 1 scored {player_points[0]} and Player 2 scored {player_points[1]}... What a game!")
