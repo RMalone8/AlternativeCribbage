@@ -390,4 +390,39 @@ if __name__ == "__main__":
         print(f"Player 2 has {player_points[1]} points.")
         turn += 1
 
+    turn += 1
+    if running_sum == 31:
+        player_points[turn%2] += 2
+    else:
+        player_points[turn%2] += 1
     print(f"Pegging Over!! Player 1 scored {player_points[0]} and Player 2 scored {player_points[1]}... What a game!")
+
+
+# pile = [{"title": "7",
+#          "suit": "Hearts",
+#          "color": "Red",
+#          "value": 7,
+#          "order_value": 7},
+#         {"title": "7",
+#          "suit": "Diamonds",
+#          "color": "Red",
+#          "value": 7,
+#          "order_value": 7},
+#          {"title": "6",
+#          "suit": "Hearts",
+#          "color": "Red",
+#          "value": 6,
+#          "order_value": 6},
+#         {"title": "7",
+#          "suit": "Diamonds",
+#          "color": "Red",
+#          "value": 7,
+#          "order_value": 7},
+#          {"title": "5",
+#          "suit": "Hearts",
+#          "color": "Red",
+#          "value": 5,
+#          "order_value": 5},
+#          ]
+
+# print(point_check_pegging(pile=pile, previous_run_points=00))
