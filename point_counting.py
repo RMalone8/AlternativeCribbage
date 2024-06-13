@@ -87,34 +87,42 @@ def point_check_pegging(pile: list, previous_run_points: int):
             break
 
     total_points += counter*(counter-1)
-
+    print(f"counter: {counter}")
     print(f"Points after pairs: {total_points}")
 
     # Getting points for runs
     run_points = 0
+    new_prev_points = 0
     length = 0
 
     diffs = []
     for j in range(3, len(order_values)+1):
         bunch = sorted(order_values[:j])
+        print(f"Bunch {bunch}")
         diffs.append(list(np.array([bunch[i+1] - bunch[i] for i in range(j-1)])))
+        print(diffs)
 
-    diffs = diffs[::-1]
     for diff in diffs:
-        if max(diff) == 1 and diff.count(1) > diff.count(0):
+        #print(diff)
+        if max(diff) == 1 and sum(diff) >= 2:# and sum(diff) > run_points - 1:#diff.count(1) > diff.count(0):
             length = len(diff)
             run_points = sum(diff) + 1
-            break
 
     if run_points:
+        #print(order_values[:length+1])
         for num in list(set(order_values[:length+1])):
             if order_values[:length+1].count(num) > 1:
                 run_multiplier *= order_values[:length+1].count(num)
-
+    print(f"Run mult: {run_multiplier}")
     # Annoying that I have to fix it for triple runs but alas
     if run_multiplier > 1:
         run_points = run_multiplier*run_points + run_multiplier if run_multiplier != 3 else 15
-
+        print(f"RUN POINTS {run_points}")
+        new_prev_points = run_points
+        # Then take off the points from the previously counted pairs:
+        run_points -= counter*(counter-1)
+    else:
+        new_prev_points = run_points
     # For now this works ok but I wonder if as the last card moves out and an attempt to add onto the run of the remaining
     # 4 cards will cause this to have issues...
     total_points += run_points if run_points > previous_run_points else 0 
@@ -129,4 +137,4 @@ def point_check_pegging(pile: list, previous_run_points: int):
 
     print(f"Total Points: {total_points}")
 
-    return total_points, run_points
+    return total_points, new_prev_points
