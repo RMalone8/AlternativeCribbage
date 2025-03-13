@@ -390,6 +390,7 @@ def pegging_logic(select: int, hands: list, t: int, r_sum: int, stack: list, pla
     pile = stack
     player_piles = player_stacks
     player_hands = hands
+    new_points = 0
     # If we are trying to play a card, we want to make sure it's legal and then calculate the points
     if selection < len(player_hands[turn%2]) and player_hands[turn%2][selection]['value'] + running_sum < 32:
         selected_card = player_hands[turn%2].pop(selection)
@@ -428,61 +429,61 @@ pygame.display.set_caption("Alternative Cribbage")
 
 if __name__ == "__main__":
     turn = 0
-    #player_hands = [generateCards(4), generateCards(4)]
-    player_hands = [[ # player 1
-        {"title": "A",
-         "suit": "Hearts",
-         "color": "Red",
-         "value": 1,
-         "order_value": 1},
-        {"title": "2",
-         "suit": "Diamonds",
-         "color": "Red",
-         "value": 2,
-         "order_value": 2},
-         {"title": "3",
-         "suit": "Hearts",
-         "color": "Red",
-         "value": 3,
-         "order_value": 3},
-        {"title": "3",
-         "suit": "Diamonds",
-         "color": "Red",
-         "value": 3,
-         "order_value": 3},
-         {"title": "4",
-         "suit": "Hearts",
-         "color": "Red",
-         "value": 4,
-         "order_value": 4},
-         ],
-         [ # player 2
-          {"title": "A",
-         "suit": "Diamonds",
-         "color": "Red",
-         "value": 1,
-         "order_value": 1},
-        {"title": "2",
-         "suit": "Spades",
-         "color": "Black",
-         "value": 2,
-         "order_value": 2},
-         {"title": "3",
-         "suit": "Spades",
-         "color": "Black",
-         "value": 3,
-         "order_value": 3},
-        {"title": "2",
-         "suit": "Clubs",
-         "color": "Black",
-         "value": 2,
-         "order_value": 2},
-         {"title": "6",
-         "suit": "Diamonds",
-         "color": "Red",
-         "value": 6,
-         "order_value": 6}, 
-         ]]
+    pegging_hands = [generateCards(4), generateCards(4)]
+    # pegging_hands = [[ # player 1
+    #     {"title": "A",
+    #      "suit": "Hearts",
+    #      "color": "Red",
+    #      "value": 1,
+    #      "order_value": 1},
+    #     {"title": "2",
+    #      "suit": "Diamonds",
+    #      "color": "Red",
+    #      "value": 2,
+    #      "order_value": 2},
+    #      {"title": "3",
+    #      "suit": "Hearts",
+    #      "color": "Red",
+    #      "value": 3,
+    #      "order_value": 3},
+    #     {"title": "3",
+    #      "suit": "Diamonds",
+    #      "color": "Red",
+    #      "value": 3,
+    #      "order_value": 3},
+    #      {"title": "4",
+    #      "suit": "Hearts",
+    #      "color": "Red",
+    #      "value": 4,
+    #      "order_value": 4},
+    #      ],
+    #      [ # player 2
+    #       {"title": "A",
+    #      "suit": "Diamonds",
+    #      "color": "Red",
+    #      "value": 1,
+    #      "order_value": 1},
+    #     {"title": "2",
+    #      "suit": "Spades",
+    #      "color": "Black",
+    #      "value": 2,
+    #      "order_value": 2},
+    #      {"title": "3",
+    #      "suit": "Spades",
+    #      "color": "Black",
+    #      "value": 3,
+    #      "order_value": 3},
+    #     {"title": "2",
+    #      "suit": "Clubs",
+    #      "color": "Black",
+    #      "value": 2,
+    #      "order_value": 2},
+    #      {"title": "6",
+    #      "suit": "Diamonds",
+    #      "color": "Red",
+    #      "value": 6,
+    #      "order_value": 6}, 
+    #      ]]
     player_points = [0, 0]
     #cut_card = generateCards(1)
     total_pile = []
@@ -493,7 +494,7 @@ if __name__ == "__main__":
     while True:
         WIN.fill((0, 0, 0))
         # set up the screen
-        position_info = draw_hand_pegging(player_hands[turn%2])
+        position_info = draw_hand_pegging(pegging_hands[turn%2])
         position_info.append(draw_game_objs(player_stacks=player_piles))
 
         # pile info
@@ -525,14 +526,12 @@ if __name__ == "__main__":
         for event in pygame.event.get():
             x, y = pygame.mouse.get_pos()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                selection = check_click(x, y, pos_info=position_info, num_cards=len(player_hands[turn%2]))
+                selection = check_click(x, y, pos_info=position_info, num_cards=len(pegging_hands[turn%2]))
                 # If we've clicked something, let's do what must be done
                 if type(selection) == int:
                     # pegging portion
-                    if len(player_hands[0]) != 0 and len(player_hands[1]) != 0:
-                        go_count, turn, running_sum, total_pile, player_piles, player_hands, new_points = pegging_logic(select=selection, hands=player_hands, t=turn, r_sum=running_sum, stack=total_pile, player_stacks=player_piles, g_count=go_count)
-                    else:
-                        print("All done!")
+                    if len(pegging_hands[0]) != 0 or len(pegging_hands[1]) != 0:
+                        go_count, turn, running_sum, total_pile, player_piles, pegging_hands, new_points = pegging_logic(select=selection, hands=pegging_hands, t=turn, r_sum=running_sum, stack=total_pile, player_stacks=player_piles, g_count=go_count)
             if event.type == pygame.QUIT:
                 pygame.quit()
         
