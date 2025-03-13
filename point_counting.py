@@ -80,15 +80,15 @@ def point_check_pegging(pile: list, previous_run_points: int):
     order_values = order_values[::-1]
 
     # Getting points for pairs on top of the pile
-    counter = 1
-    while order_values[0] - order_values[counter] == 0:
-        counter += 1
-        if counter == len(order_values):
-            break
-
-    total_points += counter*(counter-1)
-    print(f"counter: {counter}")
-    print(f"Points after pairs: {total_points}")
+    if len(pile) > 1:
+        counter = 1
+        while order_values[0] - order_values[counter] == 0:
+            counter += 1
+            if counter == len(order_values):
+                break
+        total_points += counter*(counter-1)
+        print(f"counter: {counter}")
+        print(f"Points after pairs: {total_points}")
 
     # Getting points for runs
     run_points = 0
