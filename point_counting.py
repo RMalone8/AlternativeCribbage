@@ -63,9 +63,10 @@ def point_check(hand: list, cut_card: list = [{"title": "Blank", "suit": "Blank"
 
     return total_points
 
-def point_check_pegging(pile: list, previous_run_points: int):
+def point_check_pegging(pile: list):
     total_points = 0
     run_multiplier = 1
+    pair_points = False
 
     print(f"The pile so far is:")
     for card in pile:
@@ -86,48 +87,48 @@ def point_check_pegging(pile: list, previous_run_points: int):
             counter += 1
             if counter == len(order_values):
                 break
+        if counter > 1:
+            pair_points = True
         total_points += counter*(counter-1)
         print(f"counter: {counter}")
-        print(f"Points after pairs: {total_points}")
+    print(f"Points after pairs: {total_points}")
 
     # Getting points for runs
     run_points = 0
-    new_prev_points = 0
-    length = 0
+    run_points_pairs = 0
 
     diffs = []
+    # going through combinations of the first three cards and then beyond to see if we have any runs
     for j in range(3, len(order_values)+1):
+        # each clump of cards must be sorted from the original pile order
         bunch = sorted(order_values[:j])
         print(f"Bunch {bunch}")
         diffs.append(list(np.array([bunch[i+1] - bunch[i] for i in range(j-1)])))
         print(diffs)
 
     for diff in diffs:
-        #print(diff)
-        if max(diff) == 1 and sum(diff) >= 2:# and sum(diff) > run_points - 1:#diff.count(1) > diff.count(0):
+        # recording the longest run into run_points, which is when
+        # the biggest difference between any given card is 1 and the
+        # number of unique cards is at least 3
+        if max(diff) == 1 and sum(diff) >= 2:
             length = len(diff)
             run_points = sum(diff) + 1
-
     if run_points:
-        #print(order_values[:length+1])
         for num in list(set(order_values[:length+1])):
             if order_values[:length+1].count(num) > 1:
+                run_points_pairs += order_values[:length+1].count(num)*(order_values[:length+1].count(num)-1)
                 run_multiplier *= order_values[:length+1].count(num)
-    print(f"Run mult: {run_multiplier}")
-    # Annoying that I have to fix it for triple runs but alas
-    if run_multiplier > 1:
-        run_points = run_multiplier*run_points + run_multiplier if run_multiplier != 3 else 15
-        print(f"RUN POINTS {run_points}")
-        new_prev_points = run_points
-        # Then take off the points from the previously counted pairs:
-        run_points -= counter*(counter-1)
-    else:
-        new_prev_points = run_points
-    # For now this works ok but I wonder if as the last card moves out and an attempt to add onto the run of the remaining
-    # 4 cards will cause this to have issues...
-    total_points += run_points if run_points > previous_run_points else 0 
+        # We counted points for the pair earlier, but since it's a part of the run
+        # we must take it off of our total points
+        if pair_points:
+            print(f"Taking off the pair points of: {counter*(1-counter)}")
+            total_points -= counter*(counter-1)
+    total_points += run_multiplier*run_points
+    total_points += run_points_pairs
 
-    print(f"Points after runs: {total_points}")
+    print(f"Run Points: {run_points}")
+    print(f"Run Multiplier: {run_multiplier}")
+    print(f"Run Pair Points: {run_points_pairs}")
 
     # Getting points for reaching 15 or 31
     if sum([card["value"] for card in pile]) == 15:
@@ -137,4 +138,4 @@ def point_check_pegging(pile: list, previous_run_points: int):
 
     print(f"Total Points: {total_points}")
 
-    return total_points, new_prev_points
+    return total_points
