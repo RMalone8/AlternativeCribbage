@@ -2,6 +2,10 @@ import random
 import math
 import numpy as np
 from point_counting import point_check, point_check_pegging
+import pygame
+import pygame.gfxdraw
+
+pygame.init()
 
 deck = [ # Spades
         {"title": "A",
@@ -299,27 +303,110 @@ def pegging_prompt(hand: list):
 
     return played_card
 
-def check_for_playable_cards(hand: list, running_sum: int):
+def pegging_play_card(card: dict, previous_run_points: int) -> list:
+    '''
+    Returns two fields:
+    Firstis the number of points acquired,
+    Second is the previous run points, important for calculating the points for runs in pegging
+    '''
+
+    
+
+def check_for_playable_cards(hand: list, running_sum: int) -> bool:
     # Looks to see if the player can possibly go again and forces them to play it.
-    answer = ''
     for card in hand:
         if card["value"] + running_sum <= 31:
             print("Bruh you literally have to play a card.")
-            while True:
-                answer = pegging_prompt(hand)
-                if type(answer) != str:
-                    if answer["value"] + running_sum <= 31:
-                        return answer
-                    else:
-                        hand.append(answer)
-                        print("Bruh that card simply does not work.")
-                else:
-                    print("Please enter the correct card, this is ridiculous.")
-                           
-    return 'go'
+            return True                      
+    return False
 
+def draw_hand_pegging(hand: list) -> list:
+    i = 0
+    pos_info = []
+    for card in hand:
+        # card background
+        pos_dict = {"x": i*200 + 80, "y": HEIGHT//2 - 80, "width": 120, "height": 450}
+        pos_info.append(pos_dict)
+        pygame.draw.rect(WIN, (255, 255, 255), (pos_dict['x'], pos_dict['y'], pos_dict['width'], pos_dict['height']))
+        # symbols on card to identify which is which
+        for val in range(card['order_value']):
+            if card['suit'] == "Spades" or card['suit'] == "Diamonds":
+                pygame.draw.rect(WIN, COLORS[card['color']], (i*200 + 100, HEIGHT//2 - 60 + val*30, 40, 20))
+            else:
+                pygame.draw.circle(WIN, COLORS[card['color']], (i*200 + 100, HEIGHT//2 - 60 + val*35), 17)
+                pygame.gfxdraw.aacircle(WIN, i*200 + 100, HEIGHT//2 - 60 + val*35, 16, COLORS[card['color']])
+        i += 1
+    return pos_info
 
-answer = ''
+def draw_game_buttons() -> list:
+    pos_info = []
+    pos_dict = {"x": 80, "y": HEIGHT//2 - 160, "width": 120, "height": 60}
+    pos_info.append(pos_dict)
+    pygame.draw.rect(WIN, (173, 216, 230), (pos_dict['x'], pos_dict['y'], pos_dict['width'], pos_dict['height']))
+    return pos_dict
+
+def check_click(x: float, y: float, pos_info: list, num_cards: int) -> int: # encoding for which button
+    # right now, I will only allocate enocding for 0-3 being the cards and then 4 will be 'go'
+    i = 0
+    for card in range(num_cards):
+        if is_in_bounds(x, y, pos_info[i]):
+            return i
+        i += 1
+    # checking for 'go' and beyond... (Will probably eventually have to be i = 6 to make room for the discard stage)
+    if is_in_bounds(x, y, pos_info[i]):
+        return 4
+    return None
+
+def is_in_bounds(x: float, y: float, positions: list) -> bool:
+    '''
+    Checking if inputted coordinates are within a particular bounds
+    '''
+    if x >= positions['x'] and x <= positions['width'] + positions['x'] and y >= positions['y'] and y <= positions['height'] + positions['y']:
+        return True
+    return False
+
+def pegging_logic(select: int, hands: list, t: int, r_sum: int, prp: int, stack: list, g_count: int):
+    go_count = g_count
+    turn = t
+    previous_run_points = prp
+    running_sum = r_sum
+    selection = select
+    pile = stack
+    player_hands = hands
+    # If we are trying to play a card, we want to make sure it's legal and then calculate the points
+    if selection < len(player_hands[turn%2]) and player_hands[turn%2][selection]['value'] + running_sum < 32:
+        pile.append(player_hands[turn%2][selection])
+        running_sum += player_hands[turn%2][selection]['value']
+        player_hands[turn%2].remove(player_hands[turn%2][selection])
+        new_points, previous_run_points = point_check_pegging(pile=pile, previous_run_points=previous_run_points)
+        player_points[turn%2] += new_points
+        turn += 1
+        go_count = 0
+    if selection == 4 and not check_for_playable_cards(player_hands[turn%2], running_sum) or running_sum == 31:
+        go_count += 1
+        # override if pile == 31
+        if running_sum == 31:
+            go_count = 31
+            turn -= 1
+        # If both players cannot go, the player to go most recently gets the point and we reset the pile
+        if go_count > 1:
+            go_count = 0
+            pile.clear()
+            player_points[turn%2] += 1
+            previous_run_points = 0
+            running_sum = 0
+        turn += 1
+    return go_count, turn, previous_run_points, running_sum, pile, player_hands
+
+WIDTH = 1200
+HEIGHT = 800
+COLORS = {"Black": (0, 0, 0), "Red": (255, 0, 0)}
+FONT = pygame.font.Font('freesansbold.ttf', 32)
+
+WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+
+pygame.display.set_caption("Alternative Cribbage")
+
 if __name__ == "__main__":
     turn = 0
     player_hands = [generateCards(4), generateCards(4)]
@@ -329,7 +416,75 @@ if __name__ == "__main__":
     previous_run_points = 0
     new_points = 0
     running_sum = 0
+    go_count = 0
+    while True:
+        WIN.fill((0, 0, 0))
+        # set up the screen
+        position_info = draw_hand_pegging(player_hands[turn%2])
+        position_info.append(draw_game_buttons())
 
+        # pile info
+        pile_number = FONT.render(f'Current pile is at: {running_sum}', True, (255, 255, 255), (0, 0, 0))
+        pile_num_rect = pile_number.get_rect()
+        pile_num_rect.center = (300, 60)
+        WIN.blit(pile_number, pile_num_rect)
+
+        # player info
+        player_name = FONT.render(f'Player {turn%2 + 1}\'s Turn', True, (255, 255, 255), (0, 0, 0))
+        p_name_rect = player_name.get_rect()
+        p_name_rect.center = (300, 25)
+        WIN.blit(player_name, p_name_rect)
+
+        player1_points = FONT.render(f'Player 1\'s Points: {player_points[0]}', True, (255, 255, 255), (0, 0, 0))
+        p1_points_rect = player1_points.get_rect()
+        p1_points_rect.center = (300, 95)
+        WIN.blit(player1_points, p1_points_rect)
+        player2_points = FONT.render(f'Player 2\'s Points: {player_points[1]}', True, (255, 255, 255), (0, 0, 0))
+        p2_points_rect = player2_points.get_rect()
+        p2_points_rect.center = (300, 130)
+        WIN.blit(player2_points, p2_points_rect)
+
+        # In-game activity
+        for event in pygame.event.get():
+            x, y = pygame.mouse.get_pos()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                selection = check_click(x, y, pos_info=position_info, num_cards=len(player_hands[turn%2]))
+                # If we've clicked something, let's do what must be done
+                if type(selection) == int:
+                    if len(player_hands[0]) != 0 and len(player_hands[1]) != 0:
+                        go_count, turn, previous_run_points, running_sum, pile, player_hands = pegging_logic(select=selection, hands=player_hands, t=turn, r_sum=running_sum, prp=previous_run_points, stack=pile, g_count=go_count)
+                    '''
+                    # If we are trying to play a card, we want to make sure it's legal and then calculate the points
+                    if selection < len(player_hands[turn%2]) and player_hands[turn%2][selection]['value'] + running_sum < 32:
+                        pile.append(player_hands[turn%2][selection])
+                        running_sum += player_hands[turn%2][selection]['value']
+                        player_hands[turn%2].remove(player_hands[turn%2][selection])
+                        new_points, previous_run_points = point_check_pegging(pile=pile, previous_run_points=previous_run_points)
+                        player_points[turn%2] += new_points
+                        turn += 1
+                        go_count = 0
+                    if selection == 4 and not check_for_playable_cards(player_hands[turn%2], running_sum) or running_sum == 31:
+                        go_count += 1
+                        # override if pile == 31
+                        if running_sum == 31:
+                            go_count = 31
+                            turn -= 1
+                        # If both players cannot go, the player to go most recently gets the point and we reset the pile
+                        if go_count > 1:
+                            go_count = 0
+                            pile.clear()
+                            player_points[turn%2] += 1
+                            previous_run_points = 0
+                            running_sum = 0
+                        turn += 1
+            '''
+            if event.type == pygame.QUIT:
+                pygame.quit()
+        
+        pygame.display.flip()
+
+    pygame.quit()
+    '''
     print("Hello and Welcome! To play a card, state it in the format of the")
     print("number of the card's order followed by the first letter of its suit.")
 
@@ -337,7 +492,10 @@ if __name__ == "__main__":
         # Logic to prompt for playing a card, checks to see if the card played can even be played.
         # Will also reward the player that played the last card the points and the other starts the pile
         while True:
-            print(f"PLAYER {turn%2 + 1}'s TURN {turn%2 + 1} {turn%2 + 1} {turn%2 + 1} {turn%2 + 1}\n")
+            print(f"----- PLAYER {turn%2 + 1}'s TURN -----\n")
+            print(f"PILE SUM IS THUS: {running_sum}\n" )
+            print(f"Player 1 has {player_points[0]} points.")
+            print(f"Player 2 has {player_points[1]} points.")
             answer = pegging_prompt(player_hands[turn%2])
             if type(answer) == str:
                 answer = check_for_playable_cards(player_hands[turn%2], running_sum)
@@ -359,7 +517,7 @@ if __name__ == "__main__":
                             if answer == 'go':
                                 break
         
-            # Did they BOTH say go? If so, let's reset
+            # Did they BOTH say go? If so, let's reset the pile
             if answer == 'go':
                 player_points[turn%2] += 1
                 pile.clear()
@@ -385,18 +543,16 @@ if __name__ == "__main__":
             new_points, previous_run_points = point_check_pegging(pile, previous_run_points)
             player_points[turn%2] += new_points
 
-        print(f"PILE SUM IS THUS: {running_sum}\n" )
-        print(f"Player 1 has {player_points[0]} points.")
-        print(f"Player 2 has {player_points[1]} points.")
         turn += 1
 
+    # last check for how the pile ended
     turn += 1
     if running_sum == 31:
         player_points[turn%2] += 2
     else:
         player_points[turn%2] += 1
     print(f"Pegging Over!! Player 1 scored {player_points[0]} and Player 2 scored {player_points[1]}... What a game!")
-
+'''
 
 # pile = [{"title": "7",
 #          "suit": "Hearts",
@@ -422,7 +578,7 @@ if __name__ == "__main__":
 #          "suit": "Hearts",
 #          "color": "Red",
 #          "value": 5,
-#          "order_value": 5},
+#          "order_value": 5},4
 #          ]
 
 # print(point_check_pegging(pile=pile, previous_run_points=00))
