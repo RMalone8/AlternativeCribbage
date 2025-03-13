@@ -303,7 +303,7 @@ def pegging_prompt(hand: list):
 
     return played_card
 
-def pegging_play_card(card: dict, previous_run_points: int) -> list:
+def pegging_play_card(card: dict) -> list:
     '''
     Returns two fields:
     Firstis the number of points acquired,
@@ -321,28 +321,45 @@ def check_for_playable_cards(hand: list, running_sum: int) -> bool:
     return False
 
 def draw_hand_pegging(hand: list) -> list:
+    '''
+    Draws the hand of the active player, returns the position of the cards
+    '''
     i = 0
     pos_info = []
     for card in hand:
-        # card background
-        pos_dict = {"x": i*200 + 80, "y": HEIGHT//2 - 80, "width": 120, "height": 450}
+        # cards being displayed
+        # for the sprites that are being used, to keep proper proportions: height = 1.38411 * width
+        pos_dict = {"x": i*200 + 80, "y": HEIGHT//2, "width": 200, "height": 280}
         pos_info.append(pos_dict)
-        pygame.draw.rect(WIN, (255, 255, 255), (pos_dict['x'], pos_dict['y'], pos_dict['width'], pos_dict['height']))
-        # symbols on card to identify which is which
-        for val in range(card['order_value']):
-            if card['suit'] == "Spades" or card['suit'] == "Diamonds":
-                pygame.draw.rect(WIN, COLORS[card['color']], (i*200 + 100, HEIGHT//2 - 60 + val*30, 40, 20))
-            else:
-                pygame.draw.circle(WIN, COLORS[card['color']], (i*200 + 100, HEIGHT//2 - 60 + val*35), 17)
-                pygame.gfxdraw.aacircle(WIN, i*200 + 100, HEIGHT//2 - 60 + val*35, 16, COLORS[card['color']])
+        card_sprite = pygame.image.load(f"Assets/Cards/Modern/{(card['suit'][0]).lower()}{card['order_value']}.png").convert_alpha()
+        card_sprite = pygame.transform.scale(card_sprite, (pos_dict['width'], pos_dict['height']))
+        card_rect = card_sprite.get_rect()
+        card_rect.topleft = (pos_dict['x'], pos_dict['y'])
+        WIN.blit(card_sprite, card_rect)
         i += 1
     return pos_info
 
-def draw_game_buttons() -> list:
+def draw_game_objs(player_stacks: list) -> list:
+    '''
+    Drawing game objects (buttons, graphics) and 
+    returning the positions of the interactable ones
+    '''
+    # The 'go' button
     pos_info = []
     pos_dict = {"x": 80, "y": HEIGHT//2 - 160, "width": 120, "height": 60}
     pos_info.append(pos_dict)
     pygame.draw.rect(WIN, (173, 216, 230), (pos_dict['x'], pos_dict['y'], pos_dict['width'], pos_dict['height']))
+    # each player's pegging pile
+    i = 0
+    for pile in player_stacks:
+        for card in pile:
+            pile_card_sprite = pygame.image.load(f"Assets/Cards/Modern/{(card['suit'][0]).lower()}{card['order_value']}.png").convert_alpha()
+            pile_card_sprite = pygame.transform.scale(pile_card_sprite, (100, 140))
+            pile_card_sprite = pygame.transform.rotate(pile_card_sprite, card['rotation'])
+            pile_card_rect = pile_card_sprite.get_rect()
+            pile_card_rect.topleft = (1000, 150*i + 100)
+            WIN.blit(pile_card_sprite, pile_card_rect)
+        i += 1
     return pos_dict
 
 def check_click(x: float, y: float, pos_info: list, num_cards: int) -> int: # encoding for which button
@@ -365,20 +382,23 @@ def is_in_bounds(x: float, y: float, positions: list) -> bool:
         return True
     return False
 
-def pegging_logic(select: int, hands: list, t: int, r_sum: int, prp: int, stack: list, g_count: int):
+def pegging_logic(select: int, hands: list, t: int, r_sum: int, stack: list, player_stacks: list, g_count: int):
     go_count = g_count
     turn = t
-    previous_run_points = prp
     running_sum = r_sum
     selection = select
     pile = stack
+    player_piles = player_stacks
     player_hands = hands
     # If we are trying to play a card, we want to make sure it's legal and then calculate the points
     if selection < len(player_hands[turn%2]) and player_hands[turn%2][selection]['value'] + running_sum < 32:
-        pile.append(player_hands[turn%2][selection])
-        running_sum += player_hands[turn%2][selection]['value']
-        player_hands[turn%2].remove(player_hands[turn%2][selection])
-        new_points, previous_run_points = point_check_pegging(pile=pile, previous_run_points=previous_run_points)
+        selected_card = player_hands[turn%2].pop(selection)
+        pile.append(selected_card)
+        # adding a new field so the cards can rotate on their piles
+        selected_card['rotation'] = random.randint(-7, 7)
+        player_piles[turn%2].append(selected_card)
+        running_sum += selected_card['value']
+        new_points = point_check_pegging(pile=pile)
         player_points[turn%2] += new_points
         turn += 1
         go_count = 0
@@ -393,10 +413,9 @@ def pegging_logic(select: int, hands: list, t: int, r_sum: int, prp: int, stack:
             go_count = 0
             pile.clear()
             player_points[turn%2] += 1
-            previous_run_points = 0
             running_sum = 0
         turn += 1
-    return go_count, turn, previous_run_points, running_sum, pile, player_hands
+    return go_count, turn, running_sum, pile, player_piles, player_hands, new_points
 
 WIDTH = 1200
 HEIGHT = 800
@@ -409,11 +428,65 @@ pygame.display.set_caption("Alternative Cribbage")
 
 if __name__ == "__main__":
     turn = 0
-    player_hands = [generateCards(4), generateCards(4)]
+    #player_hands = [generateCards(4), generateCards(4)]
+    player_hands = [[ # player 1
+        {"title": "A",
+         "suit": "Hearts",
+         "color": "Red",
+         "value": 1,
+         "order_value": 1},
+        {"title": "2",
+         "suit": "Diamonds",
+         "color": "Red",
+         "value": 2,
+         "order_value": 2},
+         {"title": "3",
+         "suit": "Hearts",
+         "color": "Red",
+         "value": 3,
+         "order_value": 3},
+        {"title": "3",
+         "suit": "Diamonds",
+         "color": "Red",
+         "value": 3,
+         "order_value": 3},
+         {"title": "4",
+         "suit": "Hearts",
+         "color": "Red",
+         "value": 4,
+         "order_value": 4},
+         ],
+         [ # player 2
+          {"title": "A",
+         "suit": "Diamonds",
+         "color": "Red",
+         "value": 1,
+         "order_value": 1},
+        {"title": "2",
+         "suit": "Spades",
+         "color": "Black",
+         "value": 2,
+         "order_value": 2},
+         {"title": "3",
+         "suit": "Spades",
+         "color": "Black",
+         "value": 3,
+         "order_value": 3},
+        {"title": "2",
+         "suit": "Clubs",
+         "color": "Black",
+         "value": 2,
+         "order_value": 2},
+         {"title": "6",
+         "suit": "Diamonds",
+         "color": "Red",
+         "value": 6,
+         "order_value": 6}, 
+         ]]
     player_points = [0, 0]
     #cut_card = generateCards(1)
-    pile = []
-    previous_run_points = 0
+    total_pile = []
+    player_piles = [[], []]
     new_points = 0
     running_sum = 0
     go_count = 0
@@ -421,12 +494,16 @@ if __name__ == "__main__":
         WIN.fill((0, 0, 0))
         # set up the screen
         position_info = draw_hand_pegging(player_hands[turn%2])
-        position_info.append(draw_game_buttons())
+        position_info.append(draw_game_objs(player_stacks=player_piles))
 
         # pile info
         pile_number = FONT.render(f'Current pile is at: {running_sum}', True, (255, 255, 255), (0, 0, 0))
         pile_num_rect = pile_number.get_rect()
         pile_num_rect.center = (300, 60)
+        WIN.blit(pile_number, pile_num_rect)
+        pile_number = FONT.render(f'The last points made were: {new_points}', True, (255, 255, 255), (0, 0, 0))
+        pile_num_rect = pile_number.get_rect()
+        pile_num_rect.center = (300, 165)
         WIN.blit(pile_number, pile_num_rect)
 
         # player info
@@ -451,134 +528,12 @@ if __name__ == "__main__":
                 selection = check_click(x, y, pos_info=position_info, num_cards=len(player_hands[turn%2]))
                 # If we've clicked something, let's do what must be done
                 if type(selection) == int:
+                    # pegging portion
                     if len(player_hands[0]) != 0 and len(player_hands[1]) != 0:
-                        go_count, turn, previous_run_points, running_sum, pile, player_hands = pegging_logic(select=selection, hands=player_hands, t=turn, r_sum=running_sum, prp=previous_run_points, stack=pile, g_count=go_count)
-                    '''
-                    # If we are trying to play a card, we want to make sure it's legal and then calculate the points
-                    if selection < len(player_hands[turn%2]) and player_hands[turn%2][selection]['value'] + running_sum < 32:
-                        pile.append(player_hands[turn%2][selection])
-                        running_sum += player_hands[turn%2][selection]['value']
-                        player_hands[turn%2].remove(player_hands[turn%2][selection])
-                        new_points, previous_run_points = point_check_pegging(pile=pile, previous_run_points=previous_run_points)
-                        player_points[turn%2] += new_points
-                        turn += 1
-                        go_count = 0
-                    if selection == 4 and not check_for_playable_cards(player_hands[turn%2], running_sum) or running_sum == 31:
-                        go_count += 1
-                        # override if pile == 31
-                        if running_sum == 31:
-                            go_count = 31
-                            turn -= 1
-                        # If both players cannot go, the player to go most recently gets the point and we reset the pile
-                        if go_count > 1:
-                            go_count = 0
-                            pile.clear()
-                            player_points[turn%2] += 1
-                            previous_run_points = 0
-                            running_sum = 0
-                        turn += 1
-            '''
+                        go_count, turn, running_sum, total_pile, player_piles, player_hands, new_points = pegging_logic(select=selection, hands=player_hands, t=turn, r_sum=running_sum, stack=total_pile, player_stacks=player_piles, g_count=go_count)
+                    else:
+                        print("All done!")
             if event.type == pygame.QUIT:
                 pygame.quit()
         
         pygame.display.flip()
-
-    pygame.quit()
-    '''
-    print("Hello and Welcome! To play a card, state it in the format of the")
-    print("number of the card's order followed by the first letter of its suit.")
-
-    while len(player_hands[0]) != 0 or len(player_hands[1]) != 0:
-        # Logic to prompt for playing a card, checks to see if the card played can even be played.
-        # Will also reward the player that played the last card the points and the other starts the pile
-        while True:
-            print(f"----- PLAYER {turn%2 + 1}'s TURN -----\n")
-            print(f"PILE SUM IS THUS: {running_sum}\n" )
-            print(f"Player 1 has {player_points[0]} points.")
-            print(f"Player 2 has {player_points[1]} points.")
-            answer = pegging_prompt(player_hands[turn%2])
-            if type(answer) == str:
-                answer = check_for_playable_cards(player_hands[turn%2], running_sum)
-            # Giving the other player a chance to play more cards...
-                
-            if answer == 'go':
-                turn += 1
-                print(f"PLAYER {turn%2 + 1}'s ADDITIONAL PLAYS {turn%2 + 1} {turn%2 + 1} {turn%2 + 1} {turn%2 + 1}\n")
-                answer = pegging_prompt(player_hands[turn%2])
-                if type(answer) == str:
-                    answer = check_for_playable_cards(player_hands[turn%2], running_sum)
-                if type(answer) != str:  
-                    while answer["value"] + running_sum > 31:
-                        print("No sir, try again")
-                        player_hands[turn%2].append(answer)
-                        answer = pegging_prompt(player_hands[turn%2])
-                        if type(answer) == str:
-                            answer = check_for_playable_cards(player_hands[turn%2], running_sum)
-                            if answer == 'go':
-                                break
-        
-            # Did they BOTH say go? If so, let's reset the pile
-            if answer == 'go':
-                player_points[turn%2] += 1
-                pile.clear()
-                previous_run_points = 0
-                new_points = 0
-                running_sum = 0
-                turn += 1
-
-            # Do not execute if we are resetting
-            if type(answer) != str:
-                if running_sum + answer["value"] < 32:
-                    running_sum += answer["value"]
-                    pile.append(answer)
-                    if len(pile) > 5:
-                        pile = pile[-5:]
-                    break
-                else:
-                    print("Try a different card, or type 'go' to concede.")
-                    # Then give them their card back
-                    player_hands[turn%2].append(answer)
-                
-        if len(pile) > 1:
-            new_points, previous_run_points = point_check_pegging(pile, previous_run_points)
-            player_points[turn%2] += new_points
-
-        turn += 1
-
-    # last check for how the pile ended
-    turn += 1
-    if running_sum == 31:
-        player_points[turn%2] += 2
-    else:
-        player_points[turn%2] += 1
-    print(f"Pegging Over!! Player 1 scored {player_points[0]} and Player 2 scored {player_points[1]}... What a game!")
-'''
-
-# pile = [{"title": "7",
-#          "suit": "Hearts",
-#          "color": "Red",
-#          "value": 7,
-#          "order_value": 7},
-#         {"title": "7",
-#          "suit": "Diamonds",
-#          "color": "Red",
-#          "value": 7,
-#          "order_value": 7},
-#          {"title": "6",
-#          "suit": "Hearts",
-#          "color": "Red",
-#          "value": 6,
-#          "order_value": 6},
-#         {"title": "7",
-#          "suit": "Diamonds",
-#          "color": "Red",
-#          "value": 7,
-#          "order_value": 7},
-#          {"title": "5",
-#          "suit": "Hearts",
-#          "color": "Red",
-#          "value": 5,
-#          "order_value": 5},4
-#          ]
-
-# print(point_check_pegging(pile=pile, previous_run_points=00))
