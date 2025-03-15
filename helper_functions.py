@@ -384,7 +384,9 @@ def discarding_logic(select: int, discard_list: list, crib: list, player_hand: l
         elif min(discard_list) == -1:
             discard_list[discard_list.index(min(discard_list))] = select
     elif select == 6 and min(discard_list) > -1:
+        discard_list.sort(reverse=True)
         for discard in discard_list:
+            print(f"discarding: {discard}")
             crib.append(player_hand.pop(discard))
         discard_list[0], discard_list[1] = -1, -1
         return 1 # add one to the turn
