@@ -22,7 +22,10 @@ if __name__ == "__main__":
     hands = [generateCards(6), generateCards(6)]
     player_points = [0, 0]
     card_was_cut = False
+    finished_pegging = False
+    crib_counting = False
     discard_list = [[-1, -1], [-1, -1]]
+    cut_card = None
     crib = []
     total_pile = []
     player_piles = [[], []]
@@ -32,8 +35,8 @@ if __name__ == "__main__":
     while True:
         WIN.fill((0, 0, 0))
         # set up the screen
-        position_info = draw_hand(win=WIN, hand=hands[turn%2], discard_list=discard_list[turn%2])
-        position_info.append(draw_game_objs(win=WIN, player_piles=player_piles))
+        position_info = draw_hand(win=WIN, hand=hands[turn%2], discard_list=discard_list[turn%2], finished_peggging=finished_pegging)
+        position_info.append(draw_game_objs(win=WIN, player_piles=player_piles, cut_card=cut_card, finsihed_pegging=finished_pegging))
 
         # pile info
         pile_number = FONT.render(f'Current pile is at: {running_sum}', True, (255, 255, 255), (0, 0, 0))
@@ -68,29 +71,48 @@ if __name__ == "__main__":
                 # If we've clicked something, let's do what must be done
                 if type(selection) == int:
                     # discarding stage
-                    if len(crib) != 4:
+                    if len(crib) != 4 and not finished_pegging:
                         turn += discarding_logic(select=selection, discard_list=discard_list[turn%2], crib=crib, player_hand=hands[turn%2])
-                        print(crib)
-
-                    # pegging stage, have to reveal the cut card first tho
-                    elif len(hands[0]) != 0 or len(hands[1]) != 0:
-                        if not card_was_cut:
-                            cut_card = generateCards(1)
+                    # cutting the deck
+                    elif not card_was_cut and not finished_pegging:
+                        if selection == 6:
+                            cut_card = generateCards(1)[0]
+                            # Points if you cut a Jack
+                            if cut_card['suit'] == "Jack":
+                                player_points[turn%2] += 2
                             card_was_cut = True
+                    # pegging stage, have to reveal the cut card first tho
+                    elif (len(hands[0]) != 0 or len(hands[1]) != 0) and not finished_pegging:
                         go_count, turn, running_sum, new_points = pegging_logic(selection=selection, player_hands=hands, player_points=player_points, turn=turn, running_sum=running_sum, pile=total_pile, player_piles=player_piles, go_count=go_count)
-                    
                     # counting points in our hands
                     else:
-                        # we record whoever finished the last pile if it didn't end in 31 (which would've already been recorded then)
-                        if sum([card["value"] for card in total_pile]) < 31 and total_pile:
-                            player_points[(turn-1)%2] += 1
-                        total_pile = []
-                        # now we need to count points in order:
-                        turn = first_turn
-                        player_points[turn%2] += point_check(player_piles[turn%2], cut_card=cut_card)
-                        turn += 1
-                        player_points[turn%2] += point_check(player_piles[turn%2], cut_card=cut_card)
-                        player_points[turn%2] += point_check(crib, cut_card=cut_card, is_crib=True)
+                        # setting up point counting
+                        if not finished_pegging:
+                            # we record whoever finished the last pile if it didn't end in 31 (which would've already been recorded then)
+                            if sum([card["value"] for card in total_pile]) < 31 and total_pile:
+                                player_points[(turn-1)%2] += 1
+                            finished_pegging = True
+                            total_pile = []
+                            # put the piles back in our hands (they get drawn on the screen)
+                            hands[0], hands[1] = player_piles[0], player_piles[1]
+                            hands[0].append(cut_card)
+                            hands[1].append(cut_card)
+                            crib.append(cut_card)
+                            # set the counting order
+                            turn = first_turn
+                        elif turn == first_turn:
+                            turn += counting_logic(selection=selection, player_hand=hands[turn%2], player_points=player_points, turn=turn)
+                        elif turn == first_turn + 1:
+                            turn += counting_logic(selection=selection, player_hand=hands[turn%2], player_points=player_points, turn=turn)
+                        elif turn == first_turn + 2 or crib_counting: # a little convoluted, but this is currently how the point counting will proceed
+                            if not crib_counting:
+                                crib_counting = True
+                                turn = first_turn + 1
+                                hands[turn%2] = crib
+                            turn += counting_logic(selection=selection, player_hand=hands[turn%2], player_points=player_points, turn=turn, is_crib=True)
+                        else:
+                            # time to reset it all!
+                            pass
                         #card_was_cut = False
             if event.type == pygame.QUIT:
                 pygame.quit()
