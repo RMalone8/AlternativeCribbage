@@ -1,11 +1,13 @@
 import numpy as np
 from itertools import chain, combinations
 
-def point_check(hand: list, cut_card: list = [{"title": "Blank", "suit": "Blank", "color": "White", "value": 100, "order_value": 100}], is_crib: bool = False) -> int:
+def point_check(hand: list, is_crib: bool = False) -> int:
+    '''
+    Expects a hand to be counted and the cut card is assumed to be the last card
+    in the hand (Only really impacts the flush with the crib)
+    '''
     total_points = 0
     run_multiplier = 1
-
-    hand.append(cut_card)
 
     print(f"The following hand is:")
     for card in hand:
