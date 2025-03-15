@@ -17,10 +17,11 @@ WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Alternative Cribbage")
 
 if __name__ == "__main__":
-    turn = 0
+    first_turn = 0
+    turn = first_turn
     hands = [generateCards(6), generateCards(6)]
     player_points = [0, 0]
-    #cut_card = generateCards(1)
+    card_was_cut = False
     discard_list = [[-1, -1], [-1, -1]]
     crib = []
     total_pile = []
@@ -69,9 +70,28 @@ if __name__ == "__main__":
                     # discarding stage
                     if len(crib) != 4:
                         turn += discarding_logic(select=selection, discard_list=discard_list[turn%2], crib=crib, player_hand=hands[turn%2])
-                    # pegging stage
+                        print(crib)
+
+                    # pegging stage, have to reveal the cut card first tho
                     elif len(hands[0]) != 0 or len(hands[1]) != 0:
+                        if not card_was_cut:
+                            cut_card = generateCards(1)
+                            card_was_cut = True
                         go_count, turn, running_sum, new_points = pegging_logic(selection=selection, player_hands=hands, player_points=player_points, turn=turn, running_sum=running_sum, pile=total_pile, player_piles=player_piles, go_count=go_count)
+                    
+                    # counting points in our hands
+                    else:
+                        # we record whoever finished the last pile if it didn't end in 31 (which would've already been recorded then)
+                        if sum([card["value"] for card in total_pile]) < 31 and total_pile:
+                            player_points[(turn-1)%2] += 1
+                        total_pile = []
+                        # now we need to count points in order:
+                        turn = first_turn
+                        player_points[turn%2] += point_check(player_piles[turn%2], cut_card=cut_card)
+                        turn += 1
+                        player_points[turn%2] += point_check(player_piles[turn%2], cut_card=cut_card)
+                        player_points[turn%2] += point_check(crib, cut_card=cut_card, is_crib=True)
+                        #card_was_cut = False
             if event.type == pygame.QUIT:
                 pygame.quit()
         
