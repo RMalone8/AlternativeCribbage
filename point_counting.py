@@ -1,22 +1,22 @@
 import numpy as np
 from itertools import chain, combinations
 
-def point_check(hand: list, cut_card: list = [{"title": "Blank", "suit": "Blank", "color": "White", "value": 100, "order_value": 100}], crib: bool = False) -> int:
+def point_check(hand: list, cut_card: list = [{"title": "Blank", "suit": "Blank", "color": "White", "value": 100, "order_value": 100}], is_crib: bool = False) -> int:
     total_points = 0
     run_multiplier = 1
 
-    hand_w_cut = hand + cut_card
+    hand.append(cut_card)
 
     print(f"The following hand is:")
-    for card in hand_w_cut:
+    for card in hand:
         print(card['suit'] + " " + card['title'])
 
     # Card face value
-    values = [card['value'] for card in hand_w_cut]
+    values = [card['value'] for card in hand]
     values.sort()
 
     # Card order value
-    order_values = [card['order_value'] for card in hand_w_cut]
+    order_values = [card['order_value'] for card in hand]
     order_values.sort()
     order_values_set = list(sorted(set(order_values)))
 
@@ -54,9 +54,9 @@ def point_check(hand: list, cut_card: list = [{"title": "Blank", "suit": "Blank"
     print(f"Points after fifteens: {total_points}")
 
     # Getting points for a flush
-    if len(set([card["suit"] for card in hand])) == 1 and hand[0]["suit"] == cut_card[0]["suit"]:
+    if len(set([card["suit"] for card in hand])) == 1:
         total_points += 5
-    elif len(set([card["suit"] for card in hand])) == 1 and not crib:
+    elif len(set([card["suit"] for card in hand[:4]])) == 1 and not is_crib:
         total_points += 4
 
     print(f"Points after flushes: {total_points}")
@@ -71,10 +71,6 @@ def point_check_pegging(pile: list):
     print(f"The pile so far is:")
     for card in pile:
         print(card['suit'] + " " + card['title'])
-
-    # Card face value
-    values = [card['value'] for card in pile]
-    values.sort()
 
     # Card order value
     order_values = [card['order_value'] for card in pile]
@@ -129,6 +125,20 @@ def point_check_pegging(pile: list):
     print(f"Run Points: {run_points}")
     print(f"Run Multiplier: {run_multiplier}")
     print(f"Run Pair Points: {run_points_pairs}")
+
+    # Getting points for a flush (looking at the top and then moving down)
+    flush_count = 1
+    if len(pile) >= 4:
+        suits = [card["suit"] for card in pile][::-1]
+        top_suit = suits[0]
+        while top_suit == suits[flush_count]:
+            flush_count += 1
+            if flush_count >= len(pile):
+                break
+        print(flush_count)
+        total_points += flush_count if flush_count >= 4 else 0
+        
+    print(f"Total points after flush: {total_points}")
 
     # Getting points for reaching 15 or 31
     if sum([card["value"] for card in pile]) == 15:
