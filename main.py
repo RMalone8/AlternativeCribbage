@@ -104,6 +104,7 @@ if __name__ == "__main__":
                                 player_points[(turn-1)%2] += 1
                             finished_pegging = True
                             total_pile = []
+                            reveal_cards = True
                             # put the piles back in our hands (they get drawn on the screen)
                             hands[0], hands[1] = player_piles[0], player_piles[1]
                             hands[0].append(cut_card)
