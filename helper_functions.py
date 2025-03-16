@@ -178,7 +178,7 @@ def pegging_logic(selection: int, player_hands: list, player_points: list, turn:
             running_sum = 0
         turn += 1
         reveal_cards = False
-    elif selected_card == 7: # reveal the cards if need be
+    elif selection == 7: # reveal the cards if need be
         reveal_cards = not reveal_cards
     return go_count, turn, running_sum, new_points, reveal_cards #pile, player_piles, player_hands, new_points
 
