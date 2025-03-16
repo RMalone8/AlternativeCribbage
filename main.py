@@ -19,8 +19,10 @@ pygame.display.set_caption("Alternative Cribbage")
 if __name__ == "__main__":
     first_turn = 0
     turn = first_turn
-    hands = [generateCards(6), generateCards(6)]
+    deck = reset_deck()
+    hands = [generateCards(deck=deck, num_cards=6), generateCards(deck=deck, num_cards=6)]
     player_points = [0, 0]
+    reveal_cards = False
     card_was_cut = False
     finished_pegging = False
     crib_counting = False
@@ -35,8 +37,8 @@ if __name__ == "__main__":
     while True:
         WIN.fill((0, 0, 0))
         # set up the screen
-        position_info = draw_hand(win=WIN, hand=hands[turn%2], discard_list=discard_list[turn%2], finished_peggging=finished_pegging)
-        position_info.append(draw_game_objs(win=WIN, player_piles=player_piles, cut_card=cut_card, finsihed_pegging=finished_pegging))
+        position_info = draw_hand(win=WIN, hand=hands[turn%2], discard_list=discard_list[turn%2], finished_peggging=finished_pegging, reveal_cards=reveal_cards)
+        position_info.extend(draw_game_objs(win=WIN, player_piles=player_piles, cut_card=cut_card, finsihed_pegging=finished_pegging))
 
         # pile info
         pile_number = FONT.render(f'Current pile is at: {running_sum}', True, (255, 255, 255), (0, 0, 0))
@@ -63,27 +65,36 @@ if __name__ == "__main__":
         p2_points_rect.center = (300, 130)
         WIN.blit(player2_points, p2_points_rect)
 
+        crib_owner = FONT.render(f'The crib currently belongs to Player {(first_turn+1)%2 + 1}', True, (255, 255, 255), (0, 0, 0))
+        crib_owner_rect = crib_owner.get_rect()
+        crib_owner_rect.center = (300, 200)
+        WIN.blit(crib_owner, crib_owner_rect)
+
         # In-game activity
         for event in pygame.event.get():
             x, y = pygame.mouse.get_pos()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                selection = check_click(x, y, pos_info=position_info, num_cards=len(hands[turn%2]))
+                #print(reveal_cards)
+                selection = check_click(x, y, pos_info=position_info, num_cards=len(hands[turn%2]), reveal_cards=reveal_cards)
+                #print(f"The current turn is: {turn}")
                 # If we've clicked something, let's do what must be done
                 if type(selection) == int:
                     # discarding stage
                     if len(crib) != 4 and not finished_pegging:
-                        turn += discarding_logic(select=selection, discard_list=discard_list[turn%2], crib=crib, player_hand=hands[turn%2])
+                        #print(position_info)
+                        turn_change, reveal_cards = discarding_logic(select=selection, discard_list=discard_list[turn%2], crib=crib, player_hand=hands[turn%2], reveal_cards=reveal_cards)
+                        turn += turn_change
                     # cutting the deck
                     elif not card_was_cut and not finished_pegging:
                         if selection == 6:
-                            cut_card = generateCards(1)[0]
+                            cut_card = generateCards(deck=deck, num_cards=1)[0]
                             # Points if you cut a Jack
                             if cut_card['suit'] == "Jack":
                                 player_points[turn%2] += 2
                             card_was_cut = True
                     # pegging stage, have to reveal the cut card first tho
                     elif (len(hands[0]) != 0 or len(hands[1]) != 0) and not finished_pegging:
-                        go_count, turn, running_sum, new_points = pegging_logic(selection=selection, player_hands=hands, player_points=player_points, turn=turn, running_sum=running_sum, pile=total_pile, player_piles=player_piles, go_count=go_count)
+                        go_count, turn, running_sum, new_points, reveal_cards = pegging_logic(selection=selection, player_hands=hands, player_points=player_points, turn=turn, running_sum=running_sum, pile=total_pile, player_piles=player_piles, go_count=go_count, reveal_cards=reveal_cards)
                     # counting points in our hands
                     else:
                         # setting up point counting
@@ -100,20 +111,38 @@ if __name__ == "__main__":
                             crib.append(cut_card)
                             # set the counting order
                             turn = first_turn
-                        elif turn == first_turn:
+                            #print(f"Player's turn is gonna be {turn}")
+                        elif not crib_counting and turn < first_turn + 2:
+                            #print(f"We are now here, player's turn is gonna be: {turn}")
                             turn += counting_logic(selection=selection, player_hand=hands[turn%2], player_points=player_points, turn=turn)
-                        elif turn == first_turn + 1:
-                            turn += counting_logic(selection=selection, player_hand=hands[turn%2], player_points=player_points, turn=turn)
-                        elif turn == first_turn + 2 or crib_counting: # a little convoluted, but this is currently how the point counting will proceed
-                            if not crib_counting:
+                            if turn >= first_turn + 2:
                                 crib_counting = True
                                 turn = first_turn + 1
+                                #print(f"Player {turn%2} has the crib")
                                 hands[turn%2] = crib
-                            turn += counting_logic(selection=selection, player_hand=hands[turn%2], player_points=player_points, turn=turn, is_crib=True)
+                        elif crib_counting: # a little convoluted, but this is currently how the point counting will proceed
+                                #print(f"The turn right now belongs to: {turn%2}")
+                                turn += counting_logic(selection=selection, player_hand=hands[turn%2], player_points=player_points, turn=turn, is_crib=True)
+                                if turn != first_turn + 1:
+                                    crib_counting = False
+                                    hands[0], hands[1] = [], []
                         else:
                             # time to reset it all!
-                            pass
-                        #card_was_cut = False
+                            first_turn += 1
+                            turn = first_turn
+                            hands = [generateCards(deck=deck, num_cards=6), generateCards(deck=deck, num_cards=6)]
+                            card_was_cut = False
+                            finished_pegging = False
+                            crib_counting = False
+                            discard_list = [[-1, -1], [-1, -1]]
+                            cut_card = None
+                            crib = []
+                            total_pile = []
+                            player_piles = [[], []]
+                            new_points = 0
+                            running_sum = 0
+                            go_count = 0
+                            reveal_cards = False
             if event.type == pygame.QUIT:
                 pygame.quit()
         
