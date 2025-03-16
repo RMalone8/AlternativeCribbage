@@ -9,9 +9,9 @@ def point_check(hand: list, is_crib: bool = False) -> int:
     total_points = 0
     run_multiplier = 1
 
-    print(f"The following hand is:")
-    for card in hand:
-        print(card['suit'] + " " + card['title'])
+    #print(f"The following hand is:")
+    #for card in hand:
+        #print(card['suit'] + " " + card['title'])
 
     # Card face value
     values = [card['value'] for card in hand]
@@ -26,7 +26,7 @@ def point_check(hand: list, is_crib: bool = False) -> int:
     pairs = [order_values.count(num) for num in order_values_set]
     total_points += sum([num*(num-1) for num in pairs])
 
-    print(f"Points after pairs: {total_points}")
+    #print(f"Points after pairs: {total_points}")
 
     # Getting points for runs - rigged in a way to work for all 5-card hands: only keeps track on the highest run in a hand
     ordered_differences = np.array([order_values_set[i+1] - order_values_set[i] for i in range(len(order_values_set)) if i < len(order_values_set) - 1])
@@ -46,14 +46,14 @@ def point_check(hand: list, is_crib: bool = False) -> int:
                 just_added = True
     total_points += counter*run_multiplier if counter > 2 else 0
 
-    print(f"Points after runs: {total_points}")
+    #print(f"Points after runs: {total_points}")
 
     # Getting points for 15s
     s = list(values)
     powerset = chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
     total_points += sum([2 for group in powerset if sum(group) == 15])
 
-    print(f"Points after fifteens: {total_points}")
+    #print(f"Points after fifteens: {total_points}")
 
     # Getting points for a flush
     if len(set([card["suit"] for card in hand])) == 1:
@@ -61,7 +61,7 @@ def point_check(hand: list, is_crib: bool = False) -> int:
     elif len(set([card["suit"] for card in hand[:4]])) == 1 and not is_crib:
         total_points += 4
 
-    print(f"Points after flushes: {total_points}")
+    #print(f"Points after flushes: {total_points}")
 
     return total_points
 
@@ -70,9 +70,9 @@ def point_check_pegging(pile: list):
     run_multiplier = 1
     pair_points = False
 
-    print(f"The pile so far is:")
-    for card in pile:
-        print(card['suit'] + " " + card['title'])
+    #print(f"The pile so far is:")
+    #for card in pile:
+        #print(card['suit'] + " " + card['title'])
 
     # Card order value
     order_values = [card['order_value'] for card in pile]
@@ -88,8 +88,8 @@ def point_check_pegging(pile: list):
         if counter > 1:
             pair_points = True
         total_points += counter*(counter-1)
-        print(f"counter: {counter}")
-    print(f"Points after pairs: {total_points}")
+        #print(f"counter: {counter}")
+    #print(f"Points after pairs: {total_points}")
 
     # Getting points for runs
     run_points = 0
@@ -100,9 +100,9 @@ def point_check_pegging(pile: list):
     for j in range(3, len(order_values)+1):
         # each clump of cards must be sorted from the original pile order
         bunch = sorted(order_values[:j])
-        print(f"Bunch {bunch}")
+        #print(f"Bunch {bunch}")
         diffs.append(list(np.array([bunch[i+1] - bunch[i] for i in range(j-1)])))
-        print(diffs)
+        #print(diffs)
 
     for diff in diffs:
         # recording the longest run into run_points, which is when
@@ -119,14 +119,14 @@ def point_check_pegging(pile: list):
         # We counted points for the pair earlier, but since it's a part of the run
         # we must take it off of our total points
         if pair_points:
-            print(f"Taking off the pair points of: {counter*(1-counter)}")
+            #print(f"Taking off the pair points of: {counter*(1-counter)}")
             total_points -= counter*(counter-1)
     total_points += run_multiplier*run_points
     total_points += run_points_pairs
 
-    print(f"Run Points: {run_points}")
-    print(f"Run Multiplier: {run_multiplier}")
-    print(f"Run Pair Points: {run_points_pairs}")
+    #print(f"Run Points: {run_points}")
+    #print(f"Run Multiplier: {run_multiplier}")
+    #print(f"Run Pair Points: {run_points_pairs}")
 
     # Getting points for a flush (looking at the top and then moving down)
     flush_count = 1
@@ -137,10 +137,10 @@ def point_check_pegging(pile: list):
             flush_count += 1
             if flush_count >= len(pile):
                 break
-        print(flush_count)
+        #print(flush_count)
         total_points += flush_count if flush_count >= 4 else 0
         
-    print(f"Total points after flush: {total_points}")
+    #print(f"Total points after flush: {total_points}")
 
     # Getting points for reaching 15 or 31
     if sum([card["value"] for card in pile]) == 15:
@@ -148,6 +148,6 @@ def point_check_pegging(pile: list):
     elif sum([card["value"] for card in pile]) == 31:
         total_points += 1
 
-    print(f"Total Points: {total_points}")
+    #print(f"Total Points: {total_points}")
 
     return total_points
