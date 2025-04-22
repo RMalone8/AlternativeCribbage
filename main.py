@@ -4,6 +4,8 @@ import numpy as np
 import pygame
 import pygame.gfxdraw
 from helper_functions import *
+from buttons import Button
+from cards import Card
 
 pygame.init()
 
@@ -74,9 +76,7 @@ if __name__ == "__main__":
         for event in pygame.event.get():
             x, y = pygame.mouse.get_pos()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                #print(reveal_cards)
                 selection = check_click(x, y, pos_info=position_info, num_cards=len(hands[turn%2]), reveal_cards=reveal_cards)
-                #print(f"The current turn is: {turn}")
                 # If we've clicked something, let's do what must be done
                 if type(selection) == int:
                     # discarding stage
