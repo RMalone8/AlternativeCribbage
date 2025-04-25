@@ -15,6 +15,7 @@ COLORS = {"Black": (0, 0, 0), "Red": (255, 0, 0)}
 FONT = pygame.font.Font('freesansbold.ttf', 32)
 
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+STAGE = {0: "Discarding", 1: "Cutting Card", 2: "Pegging", 3: "Counting"}
 
 pygame.display.set_caption("Alternative Cribbage")
 
@@ -22,7 +23,7 @@ if __name__ == "__main__":
     first_turn = 0
     turn = first_turn
     deck = reset_deck()
-    hands = [generateCards(deck=deck, num_cards=6), generateCards(deck=deck, num_cards=6)]
+    hands = [generate_cards(deck=deck, num_cards=6), generate_cards(deck=deck, num_cards=6)]
     player_points = [0, 0]
     reveal_cards = False
     card_was_cut = False
@@ -36,6 +37,12 @@ if __name__ == "__main__":
     new_points = 0
     running_sum = 0
     go_count = 0
+    current_stage = 0
+    hand_initialized = [False, False]
+
+    # Button delcarations:
+    buttons = initialize_buttons()
+
     while True:
         WIN.fill((0, 0, 0))
         # set up the screen
@@ -72,13 +79,24 @@ if __name__ == "__main__":
         crib_owner_rect.center = (300, 200)
         WIN.blit(crib_owner, crib_owner_rect)
 
+        # Button and Card drawing
+        draw_buttons(win=WIN, buttons=buttons)
+        
+
         # In-game activity
         for event in pygame.event.get():
             x, y = pygame.mouse.get_pos()
             if event.type == pygame.MOUSEBUTTONDOWN:
+
+                # check for clicks
+                selection = ''.join([b.check_click(x, y) for b in buttons])
+                selection += ''.join([c.check_click(x, y) for c in hands[turn%2]])
+                
                 selection = check_click(x, y, pos_info=position_info, num_cards=len(hands[turn%2]), reveal_cards=reveal_cards)
+                
+                
                 # If we've clicked something, let's do what must be done
-                if type(selection) == int:
+                if selection:
                     # discarding stage
                     if len(crib) != 4 and not finished_pegging:
                         #print(position_info)
