@@ -1,13 +1,35 @@
 import pygame
 
 class Card:
-    def __init__(self, card_info, x, y, scale, rotation=0):
+    def __init__(self, card_info, x=0, y=0, scale=1, rotation=0):
         self.card_info = card_info
         self.x = x
         self.y = y
         self.scale = scale
         self.backside = True
         self.highlighted = False
+
+    def get_val(self) -> int:
+        return self.card_info['value']
+    
+    def get_ordered_val(self) -> int:
+        return self.card_info['order_value']
+    
+    def get_suit(self) -> str:
+        return self.card_info['suit']
+
+    def get_color(self) -> str:
+        return self.card_info['color']
+    
+    def get_title(self) -> str:
+        return self.card_info['title']
+
+    def set_pos(self, x, y) -> None:
+        self.x = x
+        self.y = y
+
+    def set_scale(self, scale) -> None:
+        self.scale = scale
 
     def draw(self, win):
         # display the side that's showing
@@ -33,5 +55,5 @@ class Card:
         if self.x < mouse_x < self.x + self.scale*100 and self.y < mouse_y < self.y + self.scale*140:
             if not self.backside:
                 self.highlighted =  not self.highlighted
-            return True
-        return False
+            return self.card_info['order_value'] + self.card_info['suit']
+        return ''
