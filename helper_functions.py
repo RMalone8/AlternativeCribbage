@@ -1,11 +1,17 @@
 import random
 import pygame
 from point_counting import point_check, point_check_pegging
+from cards import Card
+from buttons import Button
 
-def generateCards(deck: list, num_cards: int) -> list:
+def generate_cards(deck: list, num_cards: int) -> list:
     hand = []
     for i in range(num_cards):
-        hand.append(deck.pop(random.randint(0,len(deck)-1)))
+        new_card_info = deck.pop(random.randint(0,len(deck)-1))
+        new_card = Card(card_info=new_card_info)
+        new_card.set_pos(x=i*198 + 3, y=800//2 + 110)
+        new_card.set_scale(2)
+        hand.append(new_card)
     return hand
 
 def check_for_playable_cards(hand: list, running_sum: int) -> bool:
@@ -16,11 +22,23 @@ def check_for_playable_cards(hand: list, running_sum: int) -> bool:
             return True                      
     return False
 
+def initialize_buttons() -> list:
+    buttons = []
+    # 'go' button
+    buttons.append(Button(color=(173,216, 230), x=80, y=800//2 - 160, label="go", height=60, width=120, enabled=True))
+    # reveal button
+    buttons.append(Button(color=(173,216, 230), x=400, y=800//2 - 160, label="reveal", height=60, width=120, enabled=True))
+    return buttons
+
 def draw_hand(win, hand: list, discard_list: list, finished_peggging: bool, reveal_cards: bool) -> list:
     '''
-    Draws the hand of the active player, returns the position of the cards
+    Draws the hand of the active player
     '''
-    #print(hand)
+    for c in hand:
+        c.draw(win)
+
+
+    '''
     i = 0
     pos_info = []
     # setting up the hand pre-pegging
@@ -55,6 +73,11 @@ def draw_hand(win, hand: list, discard_list: list, finished_peggging: bool, reve
             win.blit(card_sprite, card_rect)
             i += 1
     return pos_info
+    '''
+
+def draw_buttons(win, buttons: Button) -> None:
+    for b in buttons:
+        b.draw(win)
 
 def draw_game_objs(win, player_piles: list, cut_card: dict, finsihed_pegging: bool) -> list:
     '''
