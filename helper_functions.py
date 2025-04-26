@@ -27,15 +27,19 @@ def initialize_buttons() -> list:
     # 'go' button
     buttons.append(Button(color=(173,216, 230), x=80, y=800//2 - 160, label="go", height=60, width=120, enabled=True))
     # reveal button
-    buttons.append(Button(color=(173,216, 230), x=400, y=800//2 - 160, label="reveal", height=60, width=120, enabled=True))
+    buttons.append(Button(color=(173,13,230), x=400, y=800//2 - 160, label="reveal", height=60, width=120, enabled=True))
     return buttons
 
-def draw_hand(win, hand: list, discard_list: list, finished_peggging: bool, reveal_cards: bool) -> list:
+def draw_hand(win, hand: list, crib: list, draw_crib: bool) -> list:
     '''
     Draws the hand of the active player
     '''
-    for c in hand:
-        c.draw(win)
+    if draw_crib:
+        for c in crib:
+            c.draw(win)
+    else:
+        for c in hand:
+            c.draw(win)
 
 
     '''
@@ -145,33 +149,26 @@ def is_in_bounds(x: float, y: float, positions: list) -> bool:
         return True
     return False
 
-def discarding_logic(select: int, discard_list: list, crib: list, player_hand: list, reveal_cards: bool) -> int:
+def discarding_logic(hand: list):
     '''
-    Logic for selecting two of the cards in hands to be discarded
-    Returns an int to either increment the turn or stay where we are
+    Returns the hand if two cards are selected to be discarded. Also
+    returns the two cards to be added to the crib
     '''
-    #print(f"Select is {select}")
-    if select < 6:
-        # deselecting
-        if select in discard_list:
-            discard_list[discard_list.index(select)] = -1
-        # selecting if there's a slot to select a card
-        elif min(discard_list) == -1:
-            discard_list[discard_list.index(min(discard_list))] = select
-        return 0, reveal_cards
-    elif select == 6 and min(discard_list) > -1:
-        discard_list.sort(reverse=True)
-        for discard in discard_list:
-            #print(f"discarding: {discard}")
-            crib.append(player_hand.pop(discard))
-        discard_list[0], discard_list[1] = -1, -1
-        reveal_cards = False
-        return 1, reveal_cards # add one to the turn
-    elif select == 7: # change where the cards are revealed
-        #print("BANG")
-        reveal_cards = not reveal_cards
-    return 0, reveal_cards # do not change the turn, still figuring out what to discard
+    discard_list = []
+    discard_idxs = []
 
+    for idx, c in enumerate(hand):
+        if c.highlighted and not c.backside:
+            discard_list.append(c)
+            discard_idxs.append(idx)
+
+    if len(discard_list) == 2:
+        hand = [c for idx, c in enumerate(hand) if idx not in discard_idxs]
+    else:
+        discard_list = []
+
+    return hand, discard_list
+    
 def pegging_logic(selection: int, player_hands: list, player_points: list, turn: int, running_sum: int, pile: list, player_piles: list, go_count: int, reveal_cards: bool):
     new_points = 0
     # If we are trying to play a card, we want to make sure it's legal and then calculate the points
