@@ -15,7 +15,7 @@ COLORS = {"Black": (0, 0, 0), "Red": (255, 0, 0)}
 FONT = pygame.font.Font('freesansbold.ttf', 32)
 
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-STAGE = {0: "Discarding", 1: "Cutting Card", 2: "Pegging", 3: "Counting"}
+STAGES = {0: "Discarding", 1: "Cutting Card", 2: "Pegging", 3: "Counting"}
 
 pygame.display.set_caption("Alternative Cribbage")
 
@@ -29,7 +29,6 @@ if __name__ == "__main__":
     card_was_cut = False
     finished_pegging = False
     crib_counting = False
-    discard_list = [[-1, -1], [-1, -1]]
     cut_card = None
     crib = []
     total_pile = []
@@ -46,8 +45,8 @@ if __name__ == "__main__":
     while True:
         WIN.fill((0, 0, 0))
         # set up the screen
-        position_info = draw_hand(win=WIN, hand=hands[turn%2], discard_list=discard_list[turn%2], finished_peggging=finished_pegging, reveal_cards=reveal_cards)
-        position_info.extend(draw_game_objs(win=WIN, player_piles=player_piles, cut_card=cut_card, finsihed_pegging=finished_pegging))
+        #position_info = draw_hand(win=WIN, hand=hands[turn%2], discard_list=discard_list[turn%2], finished_peggging=finished_pegging, reveal_cards=reveal_cards)
+        #position_info.extend(draw_game_objs(win=WIN, player_piles=player_piles, cut_card=cut_card, finsihed_pegging=finished_pegging))
 
         # pile info
         pile_number = FONT.render(f'Current pile is at: {running_sum}', True, (255, 255, 255), (0, 0, 0))
@@ -81,7 +80,7 @@ if __name__ == "__main__":
 
         # Button and Card drawing
         draw_buttons(win=WIN, buttons=buttons)
-        
+        draw_hand(win=WIN, hand=hands[turn%2], crib=crib, draw_crib=False) # must change boolean
 
         # In-game activity
         for event in pygame.event.get():
@@ -89,14 +88,40 @@ if __name__ == "__main__":
             if event.type == pygame.MOUSEBUTTONDOWN:
 
                 # check for clicks
-                selection = ''.join([b.check_click(x, y) for b in buttons])
-                selection += ''.join([c.check_click(x, y) for c in hands[turn%2]])
+                button_select = ''.join([b.check_click(x, y) for b in buttons])
+
+                card_pos_select = [c.check_click(x, y) for c in hands[turn%2]]
+                if max(card_pos_select) > 1:
+                    card_select = card_pos_select.index(1)
+                else:
+                    card_select = -1
                 
-                selection = check_click(x, y, pos_info=position_info, num_cards=len(hands[turn%2]), reveal_cards=reveal_cards)
+                #selection = check_click(x, y, pos_info=position_info, num_cards=len(hands[turn%2]), reveal_cards=reveal_cards)
                 
-                
-                # If we've clicked something, let's do what must be done
-                if selection:
+                if button_select:
+                    if button_select == "go":
+                        if STAGES[current_stage] == "Discarding":
+                            hands[turn%2], discards = discarding_logic(hands[turn%2])
+                            crib.extend(discards)
+                            if len(crib) == 4:
+                                current_stage += 1
+                            elif len(discards) == 2:
+                                turn += 1
+                                
+                        elif STAGES[current_stage] == "Cutting Card":
+                            pass
+                        elif STAGES[current_stage] == "Pegging":
+                            pass
+                        elif STAGES[current_stage] == "Counting":
+                            pass
+                    elif button_select == "reveal":
+                        for c in hands[turn%2]:
+                            c.backside = not c.backside
+
+                '''
+                if card_select > -1:
+
+
                     # discarding stage
                     if len(crib) != 4 and not finished_pegging:
                         #print(position_info)
@@ -162,6 +187,7 @@ if __name__ == "__main__":
                             running_sum = 0
                             go_count = 0
                             reveal_cards = False
+                            '''
             if event.type == pygame.QUIT:
                 pygame.quit()
         
