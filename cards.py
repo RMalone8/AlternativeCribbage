@@ -6,6 +6,7 @@ class Card:
         self.x = x
         self.y = y
         self.scale = scale
+        self.rotation = rotation
         self.backside = True
         self.highlighted = False
 
@@ -38,7 +39,7 @@ class Card:
         else:
             card_sprite = pygame.image.load(f"Assets/Cards/Modern/{(self.card_info['suit'][0]).lower()}{self.card_info['order_value']}.png").convert_alpha() 
         card_sprite = pygame.transform.scale(card_sprite, (100*self.scale, 140*self.scale))
-        card_sprite = pygame.transform.rotate(card_sprite, self.card_info['rotation'])
+        card_sprite = pygame.transform.rotate(card_sprite, self.rotation)
         
         # if it's highlighted
         if self.highlighted and not self.backside:
@@ -51,9 +52,9 @@ class Card:
         card_rect.topleft = (self.x, self.y)
         win.blit(card_sprite, card_rect)
 
-    def check_click(self, mouse_x, mouse_y) -> bool:
+    def check_click(self, mouse_x, mouse_y) -> int:
         if self.x < mouse_x < self.x + self.scale*100 and self.y < mouse_y < self.y + self.scale*140:
             if not self.backside:
                 self.highlighted =  not self.highlighted
-            return self.card_info['order_value'] + self.card_info['suit']
-        return ''
+            return 1
+        return 0
