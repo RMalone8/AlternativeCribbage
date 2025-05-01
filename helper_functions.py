@@ -171,27 +171,27 @@ def discarding_logic(hand: list):
 
     return hand, discard_list
     
-def pegging_logic(select: int, hand_and_pile: list, go_flag: bool, total_pile: list, turn: int):
+def pegging_logic(select: int, hand_and_pile: list, go_indicator: bool, total_pile: list, turn: int):
     new_points = -1
     running_sum = sum([c.get_value() for c in total_pile])
 
     # Logic for claiming we are done
     if select == -1:
         if check_for_playable_cards(hand=hand_and_pile["hand"], running_sum=running_sum):
-            go_flag = False
-            return new_points, running_sum, go_flag
+            go_indicator = 0
+            return new_points, running_sum, go_indicator
         else:
-            if not go_flag:
-                go_flag = True
+            if not go_indicator:
+                go_indicator = turn + 1
             else:
                 total_pile.clear()
                 running_sum = 0
                 new_points = 1
-                go_flag = False
-            return new_points, running_sum, go_flag
+                go_indicator = 0
+            return new_points, running_sum, go_indicator
     # If we are trying to play a card, we want to make sure it's legal and then calculate the points
     elif hand_and_pile["hand"][select].get_value() + running_sum > 31:
-        return new_points, running_sum, go_flag
+        return new_points, running_sum, go_indicator
     else: # playable card is placed down
         selected_card = hand_and_pile["hand"].pop(select)
         selected_card.set_rotation(random.randint(-7, 7))
@@ -204,9 +204,9 @@ def pegging_logic(select: int, hand_and_pile: list, go_flag: bool, total_pile: l
         if running_sum == 31:
             total_pile.clear()
             running_sum = 0
-        go_flag = False
+        go_indicator = 0
 
-    return new_points, running_sum, go_flag
+    return new_points, running_sum, go_indicator
 
 def counting_logic(selection: int, player_hand: list, player_points: list, turn: int, is_crib: bool = False) -> int:
     '''
