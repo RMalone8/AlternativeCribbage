@@ -14,11 +14,11 @@ def point_check(hand: list, is_crib: bool = False) -> int:
         #print(card['suit'] + " " + card['title'])
 
     # Card face value
-    values = [card['value'] for card in hand]
+    values = [card.get_value() for card in hand]
     values.sort()
 
     # Card order value
-    order_values = [card['order_value'] for card in hand]
+    order_values = [card.get_ordered_val() for card in hand]
     order_values.sort()
     order_values_set = list(sorted(set(order_values)))
 
@@ -56,16 +56,16 @@ def point_check(hand: list, is_crib: bool = False) -> int:
     #print(f"Points after fifteens: {total_points}")
 
     # Getting points for a flush
-    if len(set([card["suit"] for card in hand])) == 1:
+    if len(set([card.get_suit() for card in hand])) == 1:
         total_points += 5
-    elif len(set([card["suit"] for card in hand[:4]])) == 1 and not is_crib:
+    elif len(set([card.get_suit() for card in hand[:4]])) == 1 and not is_crib:
         total_points += 4
 
     #print(f"Points after flushes: {total_points}")
 
     return total_points
 
-def point_check_pegging(pile: list, running_sum: int):
+def point_check_pegging(pile: list, running_sum: int) -> int:
     total_points = 0
     run_multiplier = 1
     pair_points = False
