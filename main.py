@@ -23,7 +23,6 @@ if __name__ == "__main__":
     first_turn = 0
     turn = first_turn
     deck = reset_deck()
-    hands = [generate_cards(deck=deck, num_cards=6), generate_cards(deck=deck, num_cards=6)]
     player_points = [0, 0]
     reveal_cards = False
     card_was_cut = False
@@ -38,15 +37,17 @@ if __name__ == "__main__":
     go_count = 0
     current_stage = 0
     hand_initialized = [False, False]
+    stage_initialized = False
+    go_flag = False
 
     # Button delcarations:
     buttons = initialize_buttons()
 
+    # Hand initialization -> The empty list following the generated hand is the pile for pegging
+    hands = [{"hand": generate_cards(deck=deck, num_cards=6), "pile": []}, {"hand": generate_cards(deck=deck, num_cards=6), "pile": []}]
+
     while True:
         WIN.fill((0, 0, 0))
-        # set up the screen
-        #position_info = draw_hand(win=WIN, hand=hands[turn%2], discard_list=discard_list[turn%2], finished_peggging=finished_pegging, reveal_cards=reveal_cards)
-        #position_info.extend(draw_game_objs(win=WIN, player_piles=player_piles, cut_card=cut_card, finsihed_pegging=finished_pegging))
 
         # pile info
         pile_number = FONT.render(f'Current pile is at: {running_sum}', True, (255, 255, 255), (0, 0, 0))
@@ -80,7 +81,12 @@ if __name__ == "__main__":
 
         # Button and Card drawing
         draw_buttons(win=WIN, buttons=buttons)
-        draw_hand(win=WIN, hand=hands[turn%2], crib=crib, draw_crib=False) # must change boolean
+        draw_hand(win=WIN, hands=hands, turn=turn%2, cut_card=cut_card, crib=crib, draw_crib=False) # must change boolean
+
+        # Whenever a stage needs to be setup again
+        if not stage_initialized:
+            stage_initialized = True
+            hands, cut_card = position_hands(stage=STAGES[current_stage], hands=hands, cut_card=cut_card)
 
         # In-game activity
         for event in pygame.event.get():
@@ -90,32 +96,52 @@ if __name__ == "__main__":
                 # check for clicks
                 button_select = ''.join([b.check_click(x, y) for b in buttons])
 
-                card_pos_select = [c.check_click(x, y) for c in hands[turn%2]]
-                if max(card_pos_select) > 1:
+                card_pos_select = [c.check_click(x, y) for c in hands[turn%2]["hand"]]
+                if max(card_pos_select) == 1:
                     card_select = card_pos_select.index(1)
                 else:
                     card_select = -1
-                
-                #selection = check_click(x, y, pos_info=position_info, num_cards=len(hands[turn%2]), reveal_cards=reveal_cards)
+
+                # For pegging, selecting a card activates the 'go' button
+                if STAGES[current_stage] == "Pegging" and card_select > -1:
+                    button_select = "go"
                 
                 if button_select:
                     if button_select == "go":
                         if STAGES[current_stage] == "Discarding":
-                            hands[turn%2], discards = discarding_logic(hands[turn%2])
+                            hands[turn%2]["hand"], discards = discarding_logic(hands[turn%2]["hand"])
                             crib.extend(discards)
                             if len(crib) == 4:
                                 current_stage += 1
+                                stage_initialized = False
                             elif len(discards) == 2:
                                 turn += 1
-                                
+
                         elif STAGES[current_stage] == "Cutting Card":
-                            pass
+                            cut_card = generate_cards(deck=deck, num_cards=1)[0]
+                            cut_card.backside = False
+                            current_stage += 1
+                            stage_initialized = False
+                            
                         elif STAGES[current_stage] == "Pegging":
-                            pass
+                            pegging_points, running_sum, go_flag = pegging_logic(select=card_select, hand_and_pile=hands[turn%2], go_flag=go_flag, total_pile=total_pile, turn=turn%2)
+                            if pegging_points > -1:
+                                player_points[turn%2] += pegging_points
+                                turn += 1
+                            elif go_flag and not check_for_playable_cards(hand=hands[turn%2]["hand"], running_sum=running_sum):
+                                print("Right here")
+                                turn += 1
+
+                            # If we are done pegging
+                            if len(hands[0]["hand"]) == 0 and len(hands[1]["hand"]):
+                                current_stage += 1
+                                stage_initialized = False
+
                         elif STAGES[current_stage] == "Counting":
                             pass
+
                     elif button_select == "reveal":
-                        for c in hands[turn%2]:
+                        for c in hands[turn%2]["hand"]:
                             c.backside = not c.backside
 
                 '''
