@@ -10,7 +10,7 @@ class Card:
         self.backside = True
         self.highlighted = False
 
-    def get_val(self) -> int:
+    def get_value(self) -> int:
         return self.card_info['value']
     
     def get_ordered_val(self) -> int:
@@ -31,6 +31,9 @@ class Card:
 
     def set_scale(self, scale) -> None:
         self.scale = scale
+
+    def set_rotation(self, rotation) -> None:
+        self.rotation = rotation
 
     def draw(self, win):
         # display the side that's showing
