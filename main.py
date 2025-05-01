@@ -38,7 +38,7 @@ if __name__ == "__main__":
     current_stage = 0
     hand_initialized = [False, False]
     stage_initialized = False
-    go_flag = False
+    go_indicator = 0
 
     # Button delcarations:
     buttons = initialize_buttons()
@@ -97,7 +97,7 @@ if __name__ == "__main__":
                 button_select = ''.join([b.check_click(x, y) for b in buttons])
 
                 card_pos_select = [c.check_click(x, y) for c in hands[turn%2]["hand"]]
-                if max(card_pos_select) == 1:
+                if 1 in card_pos_select:
                     card_select = card_pos_select.index(1)
                 else:
                     card_select = -1
@@ -120,20 +120,26 @@ if __name__ == "__main__":
                         elif STAGES[current_stage] == "Cutting Card":
                             cut_card = generate_cards(deck=deck, num_cards=1)[0]
                             cut_card.backside = False
+                            if cut_card.get_title() == "Jack":
+                                player_points[turn%2] += 2
                             current_stage += 1
                             stage_initialized = False
                             
                         elif STAGES[current_stage] == "Pegging":
-                            pegging_points, running_sum, go_flag = pegging_logic(select=card_select, hand_and_pile=hands[turn%2], go_flag=go_flag, total_pile=total_pile, turn=turn%2)
+                            pegging_points, running_sum, go_indicator = pegging_logic(select=card_select, hand_and_pile=hands[turn%2], go_indicator=go_indicator, total_pile=total_pile, turn=turn%2)
                             if pegging_points > -1:
+                                print("Points allocating!")
                                 player_points[turn%2] += pegging_points
                                 turn += 1
-                            elif go_flag and not check_for_playable_cards(hand=hands[turn%2]["hand"], running_sum=running_sum):
-                                print("Right here")
+                            elif go_indicator == turn%2 + 1:
+                                print("That's a go!")
                                 turn += 1
 
                             # If we are done pegging
-                            if len(hands[0]["hand"]) == 0 and len(hands[1]["hand"]):
+                            if len(hands[0]["hand"]) == 0 and len(hands[1]["hand"]) == 0:
+                                # if the player did not get 31 and ended the last pile, record a point for them
+                                if running_sum != 31:
+                                    player_points[(turn - 1)%2] += 1
                                 current_stage += 1
                                 stage_initialized = False
 
