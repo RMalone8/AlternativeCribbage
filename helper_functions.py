@@ -17,7 +17,7 @@ def generate_cards(deck: list, num_cards: int) -> list:
 def check_for_playable_cards(hand: list, running_sum: int) -> bool:
     # Looks to see if the player can possibly go again and forces them to play it.
     for card in hand:
-        if card["value"] + running_sum <= 31:
+        if card.get_value() + running_sum <= 31:
             print("Bruh you literally have to play a card.")
             return True                      
     return False
@@ -30,7 +30,7 @@ def initialize_buttons() -> list:
     buttons.append(Button(color=(173,13,230), x=400, y=800//2 - 160, label="reveal", height=60, width=120, enabled=True))
     return buttons
 
-def draw_hand(win, hand: list, crib: list, draw_crib: bool) -> list:
+def draw_hand(win, hands: list, turn:int, cut_card: Card, crib: list, draw_crib: bool) -> list:
     '''
     Draws the hand of the active player
     '''
@@ -38,8 +38,14 @@ def draw_hand(win, hand: list, crib: list, draw_crib: bool) -> list:
         for c in crib:
             c.draw(win)
     else:
-        for c in hand:
+        for c in hands[turn]["hand"]:
             c.draw(win)
+        for h in hands:
+            for c in h["pile"]:
+                c.draw(win)
+
+    if cut_card:
+        cut_card.draw(win)
 
 
     '''
@@ -78,6 +84,27 @@ def draw_hand(win, hand: list, crib: list, draw_crib: bool) -> list:
             i += 1
     return pos_info
     '''
+
+def position_hands(stage: str, hands: list, cut_card: Card):
+    if stage == "Discarding":
+        for h in hands:
+            for i, c in enumerate(h["hand"]):
+                c.set_pos(x=i*198 + 3, y=800//2 + 110)
+                c.set_scale(2)
+    elif stage == "Cutting Card":
+        for h in hands:
+            for i, c in enumerate(h["hand"]):
+                c.set_pos(x=i*120 + 3, y=800//2 + 200)
+                c.set_scale(1)
+    elif stage == "Pegging":
+        for h in hands:
+            for i, c in enumerate(h["hand"]):
+                c.set_pos(x=i*198 + 3, y=800//2 + 110)
+                c.set_scale(2)
+        cut_card.set_pos(800, 200)
+        cut_card.set_scale(1)
+
+    return hands, cut_card
 
 def draw_buttons(win, buttons: Button) -> None:
     for b in buttons:
@@ -124,31 +151,6 @@ def draw_game_objs(win, player_piles: list, cut_card: dict, finsihed_pegging: bo
         pygame.draw.rect(win, (173, 216, 230), (pos_dict['x'], pos_dict['y'], pos_dict['width'], pos_dict['height']))
     return pos_info
 
-def check_click(x: float, y: float, pos_info: list, num_cards: int, reveal_cards: bool) -> int: # encoding for which button
-    # right now, I will only allocate enocding for 0-3 being the cards and then 4 will be 'go'
-    i = 0
-    if reveal_cards:
-        for card in range(num_cards):
-            if is_in_bounds(x, y, pos_info[i]):
-                return i
-            i += 1
-    # checking for 'go'
-    if is_in_bounds(x, y, pos_info[i]):
-        return 6
-    i += 1
-    # checking for 'reveal'
-    if is_in_bounds(x,y, pos_info[i]):
-        return 7
-    return None
-
-def is_in_bounds(x: float, y: float, positions: list) -> bool:
-    '''
-    Checking if inputted coordinates are within a particular bounds
-    '''
-    if x >= positions['x'] and x <= positions['width'] + positions['x'] and y >= positions['y'] and y <= positions['height'] + positions['y']:
-        return True
-    return False
-
 def discarding_logic(hand: list):
     '''
     Returns the hand if two cards are selected to be discarded. Also
@@ -169,38 +171,42 @@ def discarding_logic(hand: list):
 
     return hand, discard_list
     
-def pegging_logic(selection: int, player_hands: list, player_points: list, turn: int, running_sum: int, pile: list, player_piles: list, go_count: int, reveal_cards: bool):
-    new_points = 0
+def pegging_logic(select: int, hand_and_pile: list, go_flag: bool, total_pile: list, turn: int):
+    new_points = -1
+    running_sum = sum([c.get_value() for c in total_pile])
+
+    # Logic for claiming we are done
+    if select == -1:
+        if check_for_playable_cards(hand=hand_and_pile["hand"], running_sum=running_sum):
+            go_flag = False
+            return new_points, running_sum, go_flag
+        else:
+            if not go_flag:
+                go_flag = True
+            else:
+                total_pile.clear()
+                running_sum = 0
+                new_points = 1
+                go_flag = False
+            return new_points, running_sum, go_flag
     # If we are trying to play a card, we want to make sure it's legal and then calculate the points
-    if selection < len(player_hands[turn%2]) and player_hands[turn%2][selection]['value'] + running_sum < 32:
-        selected_card = player_hands[turn%2].pop(selection)
-        pile.append(selected_card)
-        # adding a new field so the cards can rotate on their piles
-        selected_card['rotation'] = random.randint(-7, 7)
-        player_piles[turn%2].append(selected_card)
-        running_sum += selected_card['value']
-        new_points = point_check_pegging(pile=pile)
-        player_points[turn%2] += new_points
-        turn += 1
-        go_count = 0
-        reveal_cards = False
-    elif selection == 6 and not check_for_playable_cards(player_hands[turn%2], running_sum) or running_sum == 31:
-        go_count += 1
-        # override if pile == 31
+    elif hand_and_pile["hand"][select].get_value() + running_sum > 31:
+        return new_points, running_sum, go_flag
+    else: # playable card is placed down
+        selected_card = hand_and_pile["hand"].pop(select)
+        selected_card.set_rotation(random.randint(-7, 7))
+        selected_card.set_pos(1000, 150*turn + 100)
+        selected_card.set_scale(1)
+        total_pile.append(selected_card)
+        hand_and_pile["pile"].append(selected_card)
+        running_sum += selected_card.get_value()
+        new_points = point_check_pegging(pile=total_pile, running_sum=running_sum)
         if running_sum == 31:
-            go_count = 31
-            turn -= 1
-        # If both players cannot go, the player to go most recently gets the point and we reset the pile
-        if go_count > 1:
-            go_count = 0
-            pile.clear()
-            player_points[turn%2] += 1
+            total_pile.clear()
             running_sum = 0
-        turn += 1
-        reveal_cards = False
-    elif selection == 7: # reveal the cards if need be
-        reveal_cards = not reveal_cards
-    return go_count, turn, running_sum, new_points, reveal_cards #pile, player_piles, player_hands, new_points
+        go_flag = False
+
+    return new_points, running_sum, go_flag
 
 def counting_logic(selection: int, player_hand: list, player_points: list, turn: int, is_crib: bool = False) -> int:
     '''
