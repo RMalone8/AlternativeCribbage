@@ -9,6 +9,7 @@ class Card:
         self.rotation = rotation
         self.backside = True
         self.highlighted = False
+        self.enable_highlight = True
 
     def get_value(self) -> int:
         return self.card_info['value']
@@ -35,6 +36,12 @@ class Card:
     def set_rotation(self, rotation) -> None:
         self.rotation = rotation
 
+    def disenable(self) -> None:
+        self.enable_highlight = False
+
+    def enable(self) -> None:
+        self.enable_highlight = True
+
     def draw(self, win):
         # display the side that's showing
         if self.backside:
@@ -57,7 +64,8 @@ class Card:
 
     def check_click(self, mouse_x, mouse_y) -> int:
         if self.x < mouse_x < self.x + self.scale*100 and self.y < mouse_y < self.y + self.scale*140:
-            if not self.backside:
+            if self.enable_highlight:
                 self.highlighted =  not self.highlighted
-            return 1
+            if not self.backside:
+                return 1
         return 0
