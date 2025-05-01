@@ -65,7 +65,7 @@ def point_check(hand: list, is_crib: bool = False) -> int:
 
     return total_points
 
-def point_check_pegging(pile: list):
+def point_check_pegging(pile: list, running_sum: int):
     total_points = 0
     run_multiplier = 1
     pair_points = False
@@ -75,7 +75,7 @@ def point_check_pegging(pile: list):
         #print(card['suit'] + " " + card['title'])
 
     # Card order value
-    order_values = [card['order_value'] for card in pile]
+    order_values = [card.get_ordered_val() for card in pile]
     order_values = order_values[::-1]
 
     # Getting points for pairs on top of the pile
@@ -131,7 +131,7 @@ def point_check_pegging(pile: list):
     # Getting points for a flush (looking at the top and then moving down)
     flush_count = 1
     if len(pile) >= 4:
-        suits = [card["suit"] for card in pile][::-1]
+        suits = [card.get_suit() for card in pile][::-1]
         top_suit = suits[0]
         while top_suit == suits[flush_count]:
             flush_count += 1
@@ -143,10 +143,10 @@ def point_check_pegging(pile: list):
     #print(f"Total points after flush: {total_points}")
 
     # Getting points for reaching 15 or 31
-    if sum([card["value"] for card in pile]) == 15:
+    if running_sum == 15:
         total_points += 2
-    elif sum([card["value"] for card in pile]) == 31:
-        total_points += 1
+    elif running_sum == 31:
+        total_points += 2
 
     #print(f"Total Points: {total_points}")
 
