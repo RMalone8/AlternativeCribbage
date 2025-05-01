@@ -9,7 +9,7 @@ def generate_cards(deck: list, num_cards: int) -> list:
     for i in range(num_cards):
         new_card_info = deck.pop(random.randint(0,len(deck)-1))
         new_card = Card(card_info=new_card_info)
-        new_card.set_pos(x=i*198 + 3, y=800//2 + 110)
+        new_card.set_pos(x=3000, y=3000)
         new_card.set_scale(2)
         hand.append(new_card)
     return hand
@@ -30,62 +30,24 @@ def initialize_buttons() -> list:
     buttons.append(Button(color=(173,13,230), x=400, y=800//2 - 160, label="reveal", height=60, width=120, enabled=True))
     return buttons
 
-def draw_hand(win, hands: list, turn:int, cut_card: Card, crib: list, draw_crib: bool) -> list:
+def initialize_hands(deck) -> list:
+    return [{"hand": generate_cards(deck=deck, num_cards=6), "pile": []}, {"hand": generate_cards(deck=deck, num_cards=6), "pile": []}]
+
+def draw_hand(win, hands: list, turn:int, cut_card: Card, crib: list) -> None:
     '''
     Draws the hand of the active player
     '''
-    if draw_crib:
-        for c in crib:
+    for c in hands[turn]["hand"]:
+        c.draw(win)
+    for h in hands:
+        for c in h["pile"]:
             c.draw(win)
-    else:
-        for c in hands[turn]["hand"]:
-            c.draw(win)
-        for h in hands:
-            for c in h["pile"]:
-                c.draw(win)
-
+    for c in crib:
+        c.draw(win)
     if cut_card:
         cut_card.draw(win)
 
-
-    '''
-    i = 0
-    pos_info = []
-    # setting up the hand pre-pegging
-    if not finished_peggging:
-        for card in hand:
-            # cards being displayed if they are revealed, otherwise you only see their backs.
-            # for the sprites that are being used, to keep proper proportions: height = 1.38411 * width
-            pos_dict = {"x": i*198 + 3, "y": 800//2 + 110, "width": 200, "height": 280}
-            if reveal_cards:
-                pos_info.append(pos_dict)
-                card_sprite = pygame.image.load(f"Assets/Cards/Modern/{(card['suit'][0]).lower()}{card['order_value']}.png").convert_alpha()
-            else:
-                card_sprite = pygame.image.load(f"Assets/Backs/Card-Back-04.png").convert_alpha()
-            card_sprite = pygame.transform.scale(card_sprite, (pos_dict['width'], pos_dict['height']))
-            if i in discard_list:
-                highlighted_sprite = pygame.Surface(card_sprite.get_size()).convert_alpha()
-                highlighted_sprite.fill((255,255,160))
-                card_sprite.blit(highlighted_sprite, (0,0), special_flags=pygame.BLEND_RGBA_MULT)
-            card_rect = card_sprite.get_rect()
-            card_rect.topleft = (pos_dict['x'], pos_dict['y'])
-            win.blit(card_sprite, card_rect)
-            i += 1
-    else: # setting up the hand post-pegging
-        for card in hand:
-            # cards being displayed
-            pos_dict = {"x": i*198 + 3, "y": 230, "width": 200, "height": 280}
-            pos_info.append(pos_dict)
-            card_sprite = pygame.image.load(f"Assets/Cards/Modern/{(card['suit'][0]).lower()}{card['order_value']}.png").convert_alpha()
-            card_sprite = pygame.transform.scale(card_sprite, (pos_dict['width'], pos_dict['height']))
-            card_rect = card_sprite.get_rect()
-            card_rect.topleft = (pos_dict['x'], pos_dict['y'])
-            win.blit(card_sprite, card_rect)
-            i += 1
-    return pos_info
-    '''
-
-def position_hands(stage: str, hands: list, cut_card: Card):
+def position_hands(stage: str, hands: list, cut_card: Card, crib: list):
     if stage == "Discarding":
         for h in hands:
             for i, c in enumerate(h["hand"]):
@@ -94,8 +56,16 @@ def position_hands(stage: str, hands: list, cut_card: Card):
     elif stage == "Cutting Card":
         for h in hands:
             for i, c in enumerate(h["hand"]):
+                c.disenable()
+                c.backside = True
                 c.set_pos(x=i*120 + 3, y=800//2 + 200)
                 c.set_scale(1)
+        for c in crib:
+            c.disenable()
+            c.set_pos(x=540, y=10)
+            c.set_scale(1)
+            c.set_rotation(random.randint(-7, 7))
+            c.backside = True
     elif stage == "Pegging":
         for h in hands:
             for i, c in enumerate(h["hand"]):
@@ -103,53 +73,25 @@ def position_hands(stage: str, hands: list, cut_card: Card):
                 c.set_scale(2)
         cut_card.set_pos(800, 200)
         cut_card.set_scale(1)
+    elif stage == "Counting":
+        for i, h in enumerate(hands):
+            for j, c in enumerate(h["pile"]):
+                c.set_pos(x=i*600 + (j%2)*200 + 10, y=(j//2)*240 + 310)
+                c.set_scale(1.5)
+        for z, c in enumerate(crib):
+            c.set_pos(x=z*150 + 600, y=10)
+            c.set_scale(1)
+            c.backside = False
+            c.highlighted = False
 
-    return hands, cut_card
+        cut_card.set_pos(410, 310)
+        cut_card.set_scale(1.5)
+        
+    return hands, cut_card, crib
 
 def draw_buttons(win, buttons: Button) -> None:
     for b in buttons:
         b.draw(win)
-
-def draw_game_objs(win, player_piles: list, cut_card: dict, finsihed_pegging: bool) -> list:
-    '''
-    Drawing game objects (buttons, graphics) and 
-    returning the positions of the interactable ones
-    '''
-    pos_info = []
-    # setting up the screen pre-pegging
-    if not finsihed_pegging:
-        # The 'go' button
-        pos_dict = {"x": 80, "y": 800//2 - 160, "width": 120, "height": 60}
-        pos_info.append(pos_dict)
-        pygame.draw.rect(win, (173, 216, 230), (pos_dict['x'], pos_dict['y'], pos_dict['width'], pos_dict['height']))
-        # The 'reveal' button
-        pos_dict = {"x": 400, "y": 800//2 - 160, "width": 120, "height": 60}
-        pos_info.append(pos_dict)
-        pygame.draw.rect(win, (255, 71, 76), (pos_dict['x'], pos_dict['y'], pos_dict['width'], pos_dict['height']))
-        # each player's pegging pile
-        i = 0
-        for pile in player_piles:
-            for card in pile:
-                pile_card_sprite = pygame.image.load(f"Assets/Cards/Modern/{(card['suit'][0]).lower()}{card['order_value']}.png").convert_alpha()
-                pile_card_sprite = pygame.transform.scale(pile_card_sprite, (100, 140))
-                pile_card_sprite = pygame.transform.rotate(pile_card_sprite, card['rotation'])
-                pile_card_rect = pile_card_sprite.get_rect()
-                pile_card_rect.topleft = (1000, 150*i + 100)
-                win.blit(pile_card_sprite, pile_card_rect)
-            i += 1
-        # drawing the cut card if we've cut it
-        if cut_card is not None:
-            cut_card_sprite = pygame.image.load(f"Assets/Cards/Modern/{(cut_card['suit'][0]).lower()}{cut_card['order_value']}.png").convert_alpha()
-            cut_card_sprite = pygame.transform.scale(cut_card_sprite, (150, 210))
-            cut_card_rect = cut_card_sprite.get_rect()
-            cut_card_rect.topleft = (800, 200)
-            win.blit(cut_card_sprite, cut_card_rect)
-    else: # setting up the screen post-pegging
-        # The 'go' button
-        pos_dict = {"x": 400, "y": 600, "width": 120, "height": 60}
-        pos_info.append(pos_dict)
-        pygame.draw.rect(win, (173, 216, 230), (pos_dict['x'], pos_dict['y'], pos_dict['width'], pos_dict['height']))
-    return pos_info
 
 def discarding_logic(hand: list):
     '''
@@ -207,15 +149,6 @@ def pegging_logic(select: int, hand_and_pile: list, go_indicator: bool, total_pi
         go_indicator = 0
 
     return new_points, running_sum, go_indicator
-
-def counting_logic(selection: int, player_hand: list, player_points: list, turn: int, is_crib: bool = False) -> int:
-    '''
-    Returns an int to either increment the turn or stay where we are
-    '''
-    if selection == 6:
-        player_points[turn%2] += point_check(player_hand, is_crib=is_crib)
-        return 1
-    return 0
 
 def reset_deck() -> list:
     deck = [ # Spades
